@@ -3,98 +3,89 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scrabble Board</title>
+    <title>Scrabble</title>
     <style>
       body {
         font-family: Arial, sans-serif;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
-        height: 100vh;
+        gap: 1rem;
         margin: 0;
+        padding: 1rem;
         background-color: #fafafa;
       }
-      .board {
-        display: grid;
-        grid-template-columns: repeat(15, 40px);
-        grid-template-rows: repeat(15, 40px);
-        gap: 0;
-        border: 2px solid #444;
+      .rack button {
+        margin: 0 4px;
+        padding: 0.5rem;
+        font-size: 1rem;
+        cursor: pointer;
       }
-      .cell {
-        width: 40px;
-        height: 40px;
-        border: 1px solid #999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-size: 12px;
-        font-weight: bold;
-        box-sizing: border-box;
-      }
-      .tw { background-color: #e53935; color: #fff; }
-      .dw { background-color: #f48fb1; }
-      .tl { background-color: #1e88e5; color: #fff; }
-      .dl { background-color: #90caf9; }
-      .center { background-color: #f48fb1; }
     </style>
   </head>
   <body>
-    <div id="app">
-      <div class="board">
-        <template v-for="(row, rIndex) in board" :key="rIndex">
-          <div
-            v-for="(cell, cIndex) in row"
-            :key="cIndex"
-            class="cell"
-            :class="cellClass(cell)"
-          >
-            <span v-if="cell === 'CENTER'">★</span>
-            <span v-else>{{ cell }}</span>
-          </div>
-        </template>
-      </div>
-    </div>
+    <div id="app"></div>
     <script type="module">
-      import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+      import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+      import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
 
-      const board = [
-        ['TW','', '', 'DL','', '', '', 'TW','', '', '', 'DL','', '', 'TW'],
-        ['', 'DW','', '', '', 'TL','', '', '', 'TL','', '', '', 'DW',''],
-        ['', '', 'DW','', '', '', 'DL','', 'DL','', '', '', 'DW','', ''],
-        ['DL','', '', 'DW','', '', '', 'DL','', '', '', 'DW','', '', 'DL'],
-        ['', '', '', '', 'DW','', '', '', '', '', 'DW','', '', '', ''],
-        ['', 'TL','', '', '', 'TL','', '', '', 'TL','', '', '', 'TL',''],
-        ['', '', 'DL','', '', '', 'DL','', 'DL','', '', '', 'DL','', ''],
-        ['TW','', '', 'DL','', '', '', 'CENTER','', '', '', 'DL','', '', 'TW'],
-        ['', '', 'DL','', '', '', 'DL','', 'DL','', '', '', 'DL','', ''],
-        ['', 'TL','', '', '', 'TL','', '', '', 'TL','', '', '', 'TL',''],
-        ['', '', '', '', 'DW','', '', '', '', '', 'DW','', '', '', ''],
-        ['DL','', '', 'DW','', '', '', 'DL','', '', '', 'DW','', '', 'DL'],
-        ['', '', 'DW','', '', '', 'DL','', 'DL','', '', '', 'DW','', ''],
-        ['', 'DW','', '', '', 'TL','', '', '', 'TL','', '', '', 'DW',''],
-        ['TW','', '', 'DL','', '', '', 'TW','', '', '', 'DL','', '', 'TW']
-      ];
+      const options = {
+        moduleCache: { vue: Vue },
+        async getFile(url) {
+          const res = await fetch(url)
+          if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
+          return await res.text()
+        },
+        addStyle(textContent) {
+          const style = Object.assign(document.createElement('style'), { textContent })
+          const ref = document.head.getElementsByTagName('style')[0] || null
+          document.head.insertBefore(style, ref)
+        }
+      }
+
+      const Grid = await loadModule('./components/Grid.vue', options)
 
       const App = {
-        data() {
-          return { board };
-        },
-        methods: {
-          cellClass(cell) {
-            switch (cell) {
-              case 'TW': return 'tw';
-              case 'DW': return 'dw';
-              case 'TL': return 'tl';
-              case 'DL': return 'dl';
-              case 'CENTER': return 'center';
-              default: return '';
-            }
-          }
-        }
-      };
+        components: { Grid },
+        setup() {
+          const rack = Vue.ref(['A','B','C','D','E','F','G'])
+          const currentLetter = Vue.ref('')
+          const word = Vue.ref('')
+          const result = Vue.ref('')
 
-      createApp(App).mount('#app');
+          function selectLetter(index) {
+            currentLetter.value = rack.value[index]
+            rack.value.splice(index, 1)
+          }
+
+          function placed() {
+            currentLetter.value = ''
+          }
+
+          async function validate() {
+            const res = await fetch(`http://localhost:8000/validate?word=${word.value}`)
+            const data = await res.json()
+            result.value = data.valid ? 'Mot valide' : 'Mot invalide'
+          }
+
+          return { rack, currentLetter, word, result, selectLetter, placed, validate }
+        },
+        template: `
+          <Grid :current-letter="currentLetter" @placed="placed" />
+          <div class="rack">
+            <button v-for="(letter, idx) in rack" :key="idx" @click="selectLetter(idx)">
+              {{ letter }}
+            </button>
+          </div>
+          <div class="validation">
+            <input v-model="word" placeholder="Mot à valider" />
+            <button @click="validate">Valider</button>
+            <p>{{ result }}</p>
+          </div>
+        `
+      }
+
+      Vue.createApp(App).mount('#app')
     </script>
   </body>
 </html>
