@@ -1,9 +1,22 @@
 <template>
   <div class="scrabble-grid">
     <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="row">
-      <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell" :class="board[rowIndex][colIndex]"
-        @dragover.prevent @drop="onDrop($event, rowIndex, colIndex)">
-        {{ cell || label(board[rowIndex][colIndex]) }}
+      <div
+        v-for="(cell, colIndex) in row"
+        :key="colIndex"
+        class="cell"
+        :class="board[rowIndex][colIndex]"
+        @dragover.prevent
+        @drop="onDrop($event, rowIndex, colIndex)"
+        @click="remove(rowIndex, colIndex)"
+      >
+        <template v-if="cell">
+          <span class="letter">{{ cell }}</span>
+          <span class="points">{{ LETTER_POINTS[cell] }}</span>
+        </template>
+        <template v-else>
+          {{ label(board[rowIndex][colIndex]) }}
+        </template>
       </div>
     </div>
   </div>
@@ -11,8 +24,9 @@
 
 <script setup>
 import { ref } from 'vue'
+import { LETTER_POINTS } from '../letterPoints.js'
 
-const emit = defineEmits(['placed'])
+const emit = defineEmits(['placed', 'removed'])
 
 const size = 15
 const board = Array.from({ length: size }, () => Array(size).fill(''))
@@ -99,6 +113,25 @@ function onDrop(e, row, col) {
     /* ignore malformed drops */
   }
 }
+
+function remove(row, col) {
+  const letter = grid.value[row][col]
+  if (!letter) return
+  grid.value[row][col] = ''
+  board[row][col] = board[row][col].replace(' use', '')
+  emit('removed', { row, col, letter })
+}
+
+function clearAll(placements) {
+  placements.forEach(({ row, col }) => {
+    if (grid.value[row][col]) {
+      grid.value[row][col] = ''
+      board[row][col] = board[row][col].replace(' use', '')
+    }
+  })
+}
+
+defineExpose({ clearAll })
 </script>
 
 <style scoped>
@@ -120,6 +153,15 @@ function onDrop(e, row, col) {
   align-items: center;
   font-weight: bold;
   user-select: none;
+  position: relative;
+}
+
+.points {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.6rem;
+  font-weight: normal;
 }
 
 .TW {
