@@ -1,35 +1,36 @@
 # Scrabble Application
 
-This project hosts a minimal Scrabble application with:
+This project provides a minimal Scrabble setup:
 
-- **Backend**: Python using FastAPI, exposing a word validation endpoint based on the ODS8 dictionary.
-- **Frontend**: Vue 3 (loaded from CDN) using a `Grid.vue` component to render the board.
-- **Database**: PostgreSQL (not yet integrated).
-
-The frontend displays a Scrabble board and a rack of seven letters that can be placed onto the grid. Words can be validated against the dictionary via the backend.
+- **Backend**: Python FastAPI serving a word-validation endpoint backed by a subset of the ODS8 dictionary.
+- **Frontend**: Vue 3 rendering the official 15×15 Scrabble board with bonus squares and a draggable rack of seven random letters.
+- **Database**: PostgreSQL (placeholder for future use).
 
 ## Setup
 
 ### Backend
-1. Set up the virtual environment and install dependencies:
+1. Create the virtual environment and install dependencies:
    ```bash
    make install
    ```
-2. Run the server:
+2. Start the FastAPI server:
    ```bash
    make backend
    ```
-3. Visit `http://localhost:8000/health` for a health check.
-4. Validate a word:
-   - `http://localhost:8000/validate?word=PYTHON`
+3. Health check: `http://localhost:8000/health`
+4. Validate a word: `http://localhost:8000/validate?word=PYTHON`
 
 ### Frontend
-Serve the static files and open the Scrabble board:
+Serve the static files and open the Scrabble interface:
 ```bash
 make frontend
 ```
-Then visit `http://localhost:5173` in a browser. Click a letter from the rack and then a cell to place it. Use the input and "Valider" button to check a word with the backend.
+Then visit `http://localhost:5173` in a browser.
+
+- The 15×15 board displays double/triple word and letter squares plus the centre star.
+- Drag a letter tile from the rack and drop it onto an empty cell.
+- Use the input box and **Valider** button to check a word against the backend.
 
 ### Notes
-- `backend/ods8.txt` contains a small subset of the ODS8 word list for demonstration.
-- Ensure PostgreSQL is running for future database features.
+- `backend/ods8.txt` contains a small subset of the ODS8 word list for demonstration purposes.
+- Ensure PostgreSQL is available if you plan to extend the project with database features.
