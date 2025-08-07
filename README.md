@@ -11,18 +11,22 @@ The first iteration displays a Scrabble board locally.
 ## Setup
 
 ### Backend
-1. Install dependencies:
+1. Set up the virtual environment and install dependencies:
    ```bash
-   pip install -r backend/requirements.txt
+   make install
    ```
 2. Run the server:
    ```bash
-   uvicorn backend.main:app --reload
+   make backend
    ```
 3. Visit `http://localhost:8000/health` for a health check.
 
 ### Frontend
-Open `frontend/index.html` in a browser. It uses Vue via CDN and displays the Scrabble board.
+Serve the static files and open the Scrabble board:
+```bash
+make frontend
+```
+Then visit `http://localhost:5173` in a browser.
 
 ### Notes
 - The ODS8 dictionary will be integrated in a later iteration.
