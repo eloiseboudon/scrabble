@@ -68,21 +68,54 @@
     }
 
     const Grid = await loadModule('./components/Grid.vue', options)
+    const Home = await loadModule('./components/Home.vue', options)
+    const Game = await loadModule('./components/Game.vue', options)
+    const Settings = await loadModule('./components/Settings.vue', options)
+    const Profile = await loadModule('./components/Profile.vue', options)
 
     const App = {
-      components: { Grid },
+      components: { Grid, Home, Game, Settings, Profile },
       setup() {
+        const view = Vue.ref('home')
+        const ongoingGames = Vue.ref([])
+        const finishedGames = Vue.ref([])
         const rack = Vue.ref([])
         const placements = Vue.ref([])
         const result = Vue.ref('')
-        const gridRef = Vue.ref(null)
+        const gameRef = Vue.ref(null)
+        const currentGame = Vue.ref(null)
+        let nextId = 1
 
-        async function init() {
+        async function newGame() {
           const res = await fetch('http://localhost:8000/start', { method: 'POST' })
           const data = await res.json()
           rack.value = data.rack
+          placements.value = []
+          result.value = ''
+          const game = { id: nextId++ }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
         }
-        init()
+
+        function resumeGame(game) {
+          currentGame.value = game
+          view.value = 'game'
+        }
+
+        function finishGame() {
+          if (currentGame.value) {
+            const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
+            if (idx !== -1) ongoingGames.value.splice(idx, 1)
+            finishedGames.value.push(currentGame.value)
+            currentGame.value = null
+          }
+          view.value = 'home'
+        }
+
+        function goHome() {
+          view.value = 'home'
+        }
 
         function onDragStart(e, idx) {
           e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx, source: 'rack' }))
@@ -96,7 +129,7 @@
             const insert = from < idx ? idx - 1 : idx
             rack.value.splice(insert, 0, tile)
           } else if (data.source === 'board') {
-            const letter = gridRef.value.takeBack(data.row, data.col)
+            const letter = gameRef.value.gridRef.takeBack(data.row, data.col)
             if (!letter) return
             const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
             if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
@@ -125,7 +158,7 @@
         }
 
         function clearMove() {
-          gridRef.value.clearAll(placements.value)
+          gameRef.value.gridRef.clearAll(placements.value)
           placements.value.forEach(p => rack.value.push(p.letter))
           placements.value = []
         }
@@ -163,6 +196,13 @@
         }
 
         return {
+          view,
+          ongoingGames,
+          finishedGames,
+          newGame,
+          resumeGame,
+          finishGame,
+          goHome,
           rack,
           onDragStart,
           placed,
@@ -170,7 +210,7 @@
           result,
           LETTER_POINTS,
           onRackDrop,
-          gridRef,
+          gameRef,
           removed,
           clearMove,
           shuffleRack,
@@ -179,23 +219,30 @@
         }
       },
       template: `
-          <Grid @placed="placed" @removed="removed" @moved="moved" ref="gridRef" :letter-points="LETTER_POINTS" />
-          <div class="rack" @dragover.prevent @drop="onRackDrop($event, rack.length)">
-            <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
-                 @dragstart="onDragStart($event, idx)"
-                 @dragover.prevent
-                 @drop="onRackDrop($event, idx)">
-              <span class="letter">{{ letter }}</span>
-              <span class="points">{{ LETTER_POINTS[letter] }}</span>
-            </div>
-          </div>
-          <div class="validation">
-            <button @click="play">Valider le coup</button>
-            <button @click="clearMove">Effacer</button>
-            <button @click="shuffleRack">Échanger</button>
-            <button @click="passTurn">Passer</button>
-            <p>{{ result }}</p>
-          </div>
+        <Home v-if="view==='home'"
+              :ongoing-games="ongoingGames"
+              :finished-games="finishedGames"
+              @new-game="newGame"
+              @resume="resumeGame"
+              @navigate="view=$event" />
+          <Game v-else-if="view==='game'"
+                ref="gameRef"
+                :rack="rack"
+                :result="result"
+                :letter-points="LETTER_POINTS"
+                @home="goHome"
+                @finish="finishGame"
+                @placed="placed"
+                @removed="removed"
+                @moved="moved"
+                @rack-drop="onRackDrop"
+                @drag-start="onDragStart"
+                @play="play"
+                @clear="clearMove"
+                @shuffle="shuffleRack"
+                @pass="passTurn" />
+          <Profile v-else-if="view==='profile'" @back="view='home'" />
+          <Settings v-else-if="view==='settings'" @back="view='home'" />
         `
     }
 
