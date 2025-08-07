@@ -1,14 +1,8 @@
 <template>
   <div class="scrabble-grid">
     <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="row">
-      <div
-        v-for="(cell, colIndex) in row"
-        :key="colIndex"
-        class="cell"
-        :class="board[rowIndex][colIndex]"
-        @dragover.prevent
-        @drop="onDrop($event, rowIndex, colIndex)"
-      >
+      <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell" :class="board[rowIndex][colIndex]"
+        @dragover.prevent @drop="onDrop($event, rowIndex, colIndex)">
         {{ cell || label(board[rowIndex][colIndex]) }}
       </div>
     </div>
@@ -78,13 +72,13 @@ const grid = ref(Array.from({ length: size }, () => Array(size).fill('')))
 function label(type) {
   switch (type) {
     case 'TW':
-      return 'M3'
+      return 'TW'
     case 'DW':
-      return 'M2'
+      return 'DW'
     case 'TL':
-      return 'L3'
+      return 'TL'
     case 'DL':
-      return 'L2'
+      return 'DL'
     case 'CENTER':
       return '★'
     default:
@@ -113,9 +107,11 @@ function onDrop(e, row, col) {
   grid-template-columns: repeat(15, 30px);
   gap: 2px;
 }
+
 .row {
   display: contents;
 }
+
 .cell {
   border: 1px solid #ccc;
   display: flex;
@@ -124,17 +120,22 @@ function onDrop(e, row, col) {
   font-weight: bold;
   user-select: none;
 }
+
 .TW {
   background-color: #f44336;
   color: #fff;
 }
-.DW, .CENTER {
+
+.DW,
+.CENTER {
   background-color: #ff9ea8;
 }
+
 .TL {
   background-color: #1976d2;
   color: #fff;
 }
+
 .DL {
   background-color: #90caf9;
 }
