@@ -1,5 +1,13 @@
 from datetime import datetime
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+)
 from sqlalchemy.orm import relationship
 
 from .database import Base
@@ -20,6 +28,12 @@ class Game(Base):
 
     id = Column(Integer, primary_key=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    max_players = Column(Integer, nullable=False)
+    vs_computer = Column(Boolean, default=False, nullable=False)
+
+    __table_args__ = (
+        CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),
+    )
 
     players = relationship("GamePlayer", back_populates="game")
     tiles = relationship("PlacedTile", back_populates="game")
@@ -31,7 +45,8 @@ class GamePlayer(Base):
 
     id = Column(Integer, primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    is_computer = Column(Boolean, default=False, nullable=False)
     rack = Column(String, nullable=False)
 
     game = relationship("Game", back_populates="players")
