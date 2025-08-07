@@ -9,6 +9,8 @@
         @dragover.prevent
         @drop="onDrop($event, rowIndex, colIndex)"
         @click="remove(rowIndex, colIndex)"
+        :draggable="!!cell"
+        @dragstart="onDragStart($event, rowIndex, colIndex)"
       >
         <template v-if="cell">
           <span class="letter">{{ cell }}</span>
@@ -25,7 +27,7 @@
 <script setup>
 import { ref } from 'vue'
 const { letterPoints } = defineProps({ letterPoints: { type: Object, required: true } })
-const emit = defineEmits(['placed', 'removed'])
+const emit = defineEmits(['placed', 'removed', 'moved'])
 
 const size = 15
 const board = Array.from({ length: size }, () => Array(size).fill(''))
@@ -103,10 +105,18 @@ function onDrop(e, row, col) {
   if (grid.value[row][col]) return
   try {
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-    if (data.letter) {
+    if (data.source === 'rack' && data.letter) {
       grid.value[row][col] = data.letter
       board[row][col] += " use"
       emit('placed', { index: data.index, row, col, letter: data.letter })
+    } else if (data.source === 'board') {
+      const letter = grid.value[data.row][data.col]
+      if (!letter) return
+      grid.value[data.row][data.col] = ''
+      board[data.row][data.col] = board[data.row][data.col].replace(' use', '')
+      grid.value[row][col] = letter
+      board[row][col] += " use"
+      emit('moved', { fromRow: data.row, fromCol: data.col, toRow: row, toCol: col, letter })
     }
   } catch (_) {
     /* ignore malformed drops */
@@ -130,7 +140,24 @@ function clearAll(placements) {
   })
 }
 
-defineExpose({ clearAll })
+function onDragStart(e, row, col) {
+  const letter = grid.value[row][col]
+  if (!letter) return
+  e.dataTransfer.setData(
+    'text/plain',
+    JSON.stringify({ source: 'board', row, col, letter })
+  )
+}
+
+function takeBack(row, col) {
+  const letter = grid.value[row][col]
+  if (!letter) return null
+  grid.value[row][col] = ''
+  board[row][col] = board[row][col].replace(' use', '')
+  return letter
+}
+
+defineExpose({ clearAll, takeBack })
 </script>
 
 <style scoped>
