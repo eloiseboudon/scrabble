@@ -92,6 +92,7 @@ function onDrop(e, row, col) {
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     if (data.letter) {
       grid.value[row][col] = data.letter
+      board[row][col] += " use"
       emit('placed', { index: data.index, row, col, letter: data.letter })
     }
   } catch (_) {
@@ -138,5 +139,9 @@ function onDrop(e, row, col) {
 
 .DL {
   background-color: #90caf9;
+}
+
+.use {
+  background: #f0e6d2;
 }
 </style>

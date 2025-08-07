@@ -1,106 +1,110 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scrabble</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        margin: 0;
-        padding: 1rem;
-        background-color: #fafafa;
-      }
-      .rack {
-        display: flex;
-        gap: 4px;
-      }
-      .tile {
-        width: 30px;
-        height: 30px;
-        border: 1px solid #333;
-        background: #f0e6d2;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-weight: bold;
-        cursor: grab;
-        user-select: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module">
-      import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
-      import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
 
-      const options = {
-        moduleCache: { vue: Vue },
-        async getFile(url) {
-          const res = await fetch(url)
-          if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
-          return await res.text()
-        },
-        addStyle(textContent) {
-          const style = Object.assign(document.createElement('style'), { textContent })
-          const ref = document.head.getElementsByTagName('style')[0] || null
-          document.head.insertBefore(style, ref)
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scrabble</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin: 0;
+      padding: 1rem;
+      background-color: #fafafa;
+    }
+
+    .rack {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tile {
+      width: 30px;
+      height: 30px;
+      border: 1px solid #333;
+      background: #f0e6d2;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-weight: bold;
+      cursor: grab;
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+    import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
+
+    const options = {
+      moduleCache: { vue: Vue },
+      async getFile(url) {
+        const res = await fetch(url)
+        if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
+        return await res.text()
+      },
+      addStyle(textContent) {
+        const style = Object.assign(document.createElement('style'), { textContent })
+        const ref = document.head.getElementsByTagName('style')[0] || null
+        document.head.insertBefore(style, ref)
+      }
+    }
+
+    const Grid = await loadModule('./components/Grid.vue', options)
+
+    const App = {
+      components: { Grid },
+      setup() {
+        const rack = Vue.ref([])
+        const placements = Vue.ref([])
+        const result = Vue.ref('')
+
+        async function init() {
+          const res = await fetch('http://localhost:8000/start', { method: 'POST' })
+          const data = await res.json()
+          rack.value = data.rack
         }
-      }
+        init()
 
-      const Grid = await loadModule('./components/Grid.vue', options)
+        function onDragStart(e, idx) {
+          e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx }))
+        }
 
-      const App = {
-        components: { Grid },
-        setup() {
-          const rack = Vue.ref([])
-          const placements = Vue.ref([])
-          const result = Vue.ref('')
+        function placed(payload) {
+          rack.value.splice(payload.index, 1)
+          placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter })
+        }
 
-          async function init() {
-            const res = await fetch('http://localhost:8000/start', { method: 'POST' })
-            const data = await res.json()
-            rack.value = data.rack
+        async function play() {
+          if (placements.value.length === 0) return
+          const res = await fetch('http://localhost:8000/play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ placements: placements.value })
+          })
+          if (!res.ok) {
+            const err = await res.json()
+            result.value = err.detail || 'Coup invalide'
+            return
           }
-          init()
+          const data = await res.json()
+          result.value = `Score : ${data.score}`
+          const drawRes = await fetch(`http://localhost:8000/draw?n=${placements.value.length}`)
+          const drawData = await drawRes.json()
+          rack.value.push(...drawData.letters)
+          placements.value = []
+        }
 
-          function onDragStart(e, idx) {
-            e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx }))
-          }
-
-          function placed(payload) {
-            rack.value.splice(payload.index, 1)
-            placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter })
-          }
-
-          async function play() {
-            if (placements.value.length === 0) return
-            const res = await fetch('http://localhost:8000/play', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ placements: placements.value })
-            })
-            if (!res.ok) {
-              const err = await res.json()
-              result.value = err.detail || 'Coup invalide'
-              return
-            }
-            const data = await res.json()
-            result.value = `Score : ${data.score}`
-            const drawRes = await fetch(`http://localhost:8000/draw?n=${placements.value.length}`)
-            const drawData = await drawRes.json()
-            rack.value.push(...drawData.letters)
-            placements.value = []
-          }
-
-          return { rack, onDragStart, placed, play, result }
-        },
-        template: `
+        return { rack, onDragStart, placed, play, result }
+      },
+      template: `
           <Grid @placed="placed" />
           <div class="rack">
             <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
@@ -113,9 +117,10 @@
             <p>{{ result }}</p>
           </div>
         `
-      }
+    }
 
-      Vue.createApp(App).mount('#app')
-    </script>
-  </body>
+    Vue.createApp(App).mount('#app')
+  </script>
+</body>
+
 </html>
