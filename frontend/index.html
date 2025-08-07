@@ -164,7 +164,7 @@
         }
       },
       template: `
-          <Grid @placed="placed" @removed="removed" ref="gridRef" />
+          <Grid @placed="placed" @removed="removed" ref="gridRef" :letter-points="LETTER_POINTS" />
           <div class="rack">
             <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
                  @dragstart="onDragStart($event, idx)"

@@ -12,7 +12,7 @@
       >
         <template v-if="cell">
           <span class="letter">{{ cell }}</span>
-          <span class="points">{{ LETTER_POINTS[cell] }}</span>
+          <span class="points">{{ letterPoints[cell] }}</span>
         </template>
         <template v-else>
           {{ label(board[rowIndex][colIndex]) }}
@@ -24,8 +24,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { LETTER_POINTS } from '../letterPoints.js'
-
+const { letterPoints } = defineProps({ letterPoints: { type: Object, required: true } })
 const emit = defineEmits(['placed', 'removed'])
 
 const size = 15
