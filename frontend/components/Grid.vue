@@ -47,6 +47,9 @@ function place(row, col) {
   grid-template-columns: repeat(15, 30px);
   gap: 2px;
 }
+.row {
+  display: contents;
+}
 .cell {
   border: 1px solid #ccc;
   display: flex;
