@@ -92,7 +92,7 @@ function onDrop(e, row, col) {
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     if (data.letter) {
       grid.value[row][col] = data.letter
-      emit('placed', data.index)
+      emit('placed', { index: data.index, row, col, letter: data.letter })
     }
   } catch (_) {
     /* ignore malformed drops */
