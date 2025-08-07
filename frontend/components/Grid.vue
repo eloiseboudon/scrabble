@@ -157,7 +157,7 @@ defineExpose({ clearAll, takeBack })
   display: grid;
   grid-template-rows: repeat(15, 30px);
   grid-template-columns: repeat(15, 30px);
-  gap: 2px;
+  border: 1px solid #ccc;
 }
 
 .row {
@@ -183,25 +183,28 @@ defineExpose({ clearAll, takeBack })
 }
 
 .TW {
-  background-color: #f44336;
+  background-color: #CB514E;
   color: #fff;
 }
 
 .DW,
 .CENTER {
-  background-color: #ff9ea8;
+  background-color: #C18AB3;
+  color: #fff;
 }
 
 .TL {
-  background-color: #1976d2;
+  background-color: #87B5D2;
   color: #fff;
 }
 
 .DL {
   background-color: #90caf9;
+  color: #fff;
 }
 
 .use {
-  background-color: #F1D87A;
+  background-color: #EBBF56;
+  color: #000;
 }
 </style>

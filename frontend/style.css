@@ -24,7 +24,28 @@ body {
 }
 
 .validation {
+  display: flex;
   margin-top: 10px;
+  justify-content: center;
+
+  button {
+    margin: 0 5px;
+    background-color: #F29C3F;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 10px;
+  }
+
+  button:hover {
+    background-color: #F6BA79;
+  }
+
+  svg {
+    width: 20px;
+  }
 }
 
 .scrabble-grid {
@@ -34,6 +55,7 @@ body {
 .rack {
   display: flex;
   gap: 4px;
+  justify-content: center;
 }
 
 .tile {
@@ -48,6 +70,8 @@ body {
   cursor: grab;
   user-select: none;
   position: relative;
+  border-radius: 10px;
+
 }
 
 .points {
@@ -72,8 +96,6 @@ button:hover,
 .nav a:hover {
   background-color: #c9a715;
 }
-
-
 
 #app .home {
   background-color: #fff;
