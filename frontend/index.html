@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Scrabble Board</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        background-color: #fafafa;
+      }
+      .board {
+        display: grid;
+        grid-template-columns: repeat(15, 40px);
+        grid-template-rows: repeat(15, 40px);
+        gap: 0;
+        border: 2px solid #444;
+      }
+      .cell {
+        width: 40px;
+        height: 40px;
+        border: 1px solid #999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 12px;
+        font-weight: bold;
+        box-sizing: border-box;
+      }
+      .tw { background-color: #e53935; color: #fff; }
+      .dw { background-color: #f48fb1; }
+      .tl { background-color: #1e88e5; color: #fff; }
+      .dl { background-color: #90caf9; }
+      .center { background-color: #f48fb1; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="board">
+        <template v-for="(row, rIndex) in board" :key="rIndex">
+          <div
+            v-for="(cell, cIndex) in row"
+            :key="cIndex"
+            class="cell"
+            :class="cellClass(cell)"
+          >
+            <span v-if="cell === 'CENTER'">★</span>
+            <span v-else>{{ cell }}</span>
+          </div>
+        </template>
+      </div>
+    </div>
+    <script type="module">
+      import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+
+      const board = [
+        ['TW','', '', 'DL','', '', '', 'TW','', '', '', 'DL','', '', 'TW'],
+        ['', 'DW','', '', '', 'TL','', '', '', 'TL','', '', '', 'DW',''],
+        ['', '', 'DW','', '', '', 'DL','', 'DL','', '', '', 'DW','', ''],
+        ['DL','', '', 'DW','', '', '', 'DL','', '', '', 'DW','', '', 'DL'],
+        ['', '', '', '', 'DW','', '', '', '', '', 'DW','', '', '', ''],
+        ['', 'TL','', '', '', 'TL','', '', '', 'TL','', '', '', 'TL',''],
+        ['', '', 'DL','', '', '', 'DL','', 'DL','', '', '', 'DL','', ''],
+        ['TW','', '', 'DL','', '', '', 'CENTER','', '', '', 'DL','', '', 'TW'],
+        ['', '', 'DL','', '', '', 'DL','', 'DL','', '', '', 'DL','', ''],
+        ['', 'TL','', '', '', 'TL','', '', '', 'TL','', '', '', 'TL',''],
+        ['', '', '', '', 'DW','', '', '', '', '', 'DW','', '', '', ''],
+        ['DL','', '', 'DW','', '', '', 'DL','', '', '', 'DW','', '', 'DL'],
+        ['', '', 'DW','', '', '', 'DL','', 'DL','', '', '', 'DW','', ''],
+        ['', 'DW','', '', '', 'TL','', '', '', 'TL','', '', '', 'DW',''],
+        ['TW','', '', 'DL','', '', '', 'TW','', '', '', 'DL','', '', 'TW']
+      ];
+
+      const App = {
+        data() {
+          return { board };
+        },
+        methods: {
+          cellClass(cell) {
+            switch (cell) {
+              case 'TW': return 'tw';
+              case 'DW': return 'dw';
+              case 'TL': return 'tl';
+              case 'DL': return 'dl';
+              case 'CENTER': return 'center';
+              default: return '';
+            }
+          }
+        }
+      };
+
+      createApp(App).mount('#app');
+    </script>
+  </body>
+</html>
