@@ -2,20 +2,23 @@
   <div class="home">
     <h1>Scrabble</h1>
     <button @click="$emit('new-game')">Créer une nouvelle partie</button>
+    <div id="ongoing-games" class="game-menu">
+      <h2>Parties en cours</h2>
+      <ul>
+        <li v-for="game in ongoingGames" :key="game.id">
+          <a href="#" @click.prevent="$emit('resume', game)">Partie {{ game.id }}</a>
+        </li>
+        <li v-if="ongoingGames.length === 0">Aucune</li>
+      </ul>
+    </div>
+    <div id="finished-games" class="game-menu">
+      <h2>Parties terminées</h2>
+      <ul>
+        <li v-for="game in finishedGames" :key="game.id">Partie {{ game.id }}</li>
+        <li v-if="finishedGames.length === 0">Aucune</li>
+      </ul>
+    </div>
 
-    <h2>Parties en cours</h2>
-    <ul>
-      <li v-for="game in ongoingGames" :key="game.id">
-        <a href="#" @click.prevent="$emit('resume', game)">Partie {{ game.id }}</a>
-      </li>
-      <li v-if="ongoingGames.length === 0">Aucune</li>
-    </ul>
-
-    <h2>Parties terminées</h2>
-    <ul>
-      <li v-for="game in finishedGames" :key="game.id">Partie {{ game.id }}</li>
-      <li v-if="finishedGames.length === 0">Aucune</li>
-    </ul>
 
     <nav class="nav">
       <a href="#" @click.prevent="$emit('navigate', 'profile')">Profil</a>
