@@ -4,7 +4,7 @@ This project provides a minimal Scrabble setup:
 
 - **Backend**: Python FastAPI serving a word-validation endpoint backed by a subset of the ODS8 dictionary.
 - **Frontend**: Vue 3 rendering the official 15×15 Scrabble board with bonus squares and a draggable rack of seven random letters.
-- **Database**: PostgreSQL (placeholder for future use).
+- **Database**: PostgreSQL (placeholder for future use) (Homebrew local).
 
 ## Setup
 
