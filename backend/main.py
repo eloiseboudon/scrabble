@@ -3,6 +3,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from uuid import uuid4
 
 from .game import DICTIONARY, draw_tiles, place_tiles, reset_game
 
@@ -15,6 +16,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Simple in-memory registry of games
+games: dict[str, dict[str, str]] = {}
 
 
 @app.get("/health")
@@ -45,7 +50,9 @@ def start() -> dict[str, list[str]]:
     """Start a new game and return an initial rack of seven tiles."""
     reset_game()
     rack = draw_tiles(7)
-    return {"rack": rack}
+    game_id = str(uuid4())
+    games[game_id] = {"id": game_id, "status": "ongoing"}
+    return {"game_id": game_id, "rack": rack}
 
 
 @app.get("/draw")
@@ -65,3 +72,21 @@ def play(req: PlayRequest) -> dict[str, int]:
     except ValueError as exc:  # pragma: no cover - simple passthrough
         raise HTTPException(status_code=400, detail=str(exc))
     return {"score": score}
+
+
+@app.get("/games")
+def list_games() -> dict[str, list[dict[str, str]]]:
+    """Return lists of ongoing and finished games."""
+    ongoing = [g for g in games.values() if g["status"] == "ongoing"]
+    finished = [g for g in games.values() if g["status"] == "finished"]
+    return {"ongoing": ongoing, "finished": finished}
+
+
+@app.post("/finish/{game_id}")
+def finish(game_id: str) -> dict[str, str]:
+    """Mark a game as finished."""
+    game = games.get(game_id)
+    if not game:
+        raise HTTPException(status_code=404, detail="Game not found")
+    game["status"] = "finished"
+    return {"status": "ok"}
