@@ -1,17 +1,9 @@
 <template>
   <div class="scrabble-grid">
     <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="row">
-      <div
-        v-for="(cell, colIndex) in row"
-        :key="colIndex"
-        class="cell"
-        :class="board[rowIndex][colIndex]"
-        @dragover.prevent
-        @drop="onDrop($event, rowIndex, colIndex)"
-        @click="remove(rowIndex, colIndex)"
-        :draggable="!!cell"
-        @dragstart="onDragStart($event, rowIndex, colIndex)"
-      >
+      <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell" :class="board[rowIndex][colIndex]"
+        @dragover.prevent @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
+        :draggable="!!cell" @dragstart="onDragStart($event, rowIndex, colIndex)">
         <template v-if="cell">
           <span class="letter">{{ cell }}</span>
           <span class="points">{{ letterPoints[cell] }}</span>
@@ -210,6 +202,6 @@ defineExpose({ clearAll, takeBack })
 }
 
 .use {
-  background: #f0e6d2;
+  background-color: #F1D87A;
 }
 </style>

@@ -15,6 +15,22 @@ body {
   color: #333;
 }
 
+#app {}
+
+.game {
+  background-color: #fff;
+  padding: 10px;
+  margin: 10px;
+}
+
+.validation {
+  margin-top: 10px;
+}
+
+.scrabble-grid {
+  margin: 10px;
+}
+
 .rack {
   display: flex;
   gap: 4px;
@@ -24,7 +40,7 @@ body {
   width: 30px;
   height: 30px;
   border: 1px solid #333;
-  background: var(--color-secondary);
+  background: var(--color-primary);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -55,4 +71,25 @@ button,
 button:hover,
 .nav a:hover {
   background-color: #c9a715;
+}
+
+
+
+#app .home {
+  background-color: #fff;
+  margin: 10px;
+  padding: 10px;
+
+  ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+  }
+}
+
+#app .home .game-menu {
+  border: 1px solid black;
+  border-radius: 10px;
+  padding: 10px;
+  width: 100vh;
 }
