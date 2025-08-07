@@ -22,18 +22,27 @@
       gap: 4px;
     }
 
-    .tile {
-      width: 30px;
-      height: 30px;
-      border: 1px solid #333;
-      background: #f0e6d2;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-weight: bold;
-      cursor: grab;
-      user-select: none;
-    }
+.tile {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #333;
+  background: #f0e6d2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  cursor: grab;
+  user-select: none;
+  position: relative;
+}
+
+.points {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 0.6rem;
+  font-weight: normal;
+}
   </style>
 </head>
 
@@ -42,6 +51,7 @@
   <script type="module">
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
+    import { LETTER_POINTS } from './letterPoints.js'
 
     const options = {
       moduleCache: { vue: Vue },
@@ -65,6 +75,7 @@
         const rack = Vue.ref([])
         const placements = Vue.ref([])
         const result = Vue.ref('')
+        const gridRef = Vue.ref(null)
 
         async function init() {
           const res = await fetch('http://localhost:8000/start', { method: 'POST' })
@@ -74,12 +85,56 @@
         init()
 
         function onDragStart(e, idx) {
-          e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx }))
+          e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx, source: 'rack' }))
+        }
+
+        function onRackDrop(e, idx) {
+          const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+          if (data.source === 'rack') {
+            const from = data.index
+            const tile = rack.value.splice(from, 1)[0]
+            const insert = from < idx ? idx - 1 : idx
+            rack.value.splice(insert, 0, tile)
+          } else if (data.source === 'board') {
+            const letter = gridRef.value.takeBack(data.row, data.col)
+            if (!letter) return
+            const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
+            if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
+            rack.value.splice(idx, 0, letter)
+          }
         }
 
         function placed(payload) {
           rack.value.splice(payload.index, 1)
           placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter })
+        }
+
+        function removed(payload) {
+          const { row, col, letter } = payload
+          const i = placements.value.findIndex(p => p.row === row && p.col === col)
+          if (i !== -1) placements.value.splice(i, 1)
+          rack.value.push(letter)
+        }
+
+        function moved(payload) {
+          const { fromRow, fromCol, toRow, toCol, letter } = payload
+          const i = placements.value.findIndex(p => p.row === fromRow && p.col === fromCol)
+          if (i !== -1) {
+            placements.value[i] = { row: toRow, col: toCol, letter }
+          }
+        }
+
+        function clearMove() {
+          gridRef.value.clearAll(placements.value)
+          placements.value.forEach(p => rack.value.push(p.letter))
+          placements.value = []
+        }
+
+        function shuffleRack() {
+          for (let i = rack.value.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+            ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
+          }
         }
 
         async function play() {
@@ -102,18 +157,43 @@
           placements.value = []
         }
 
-        return { rack, onDragStart, placed, play, result }
+        function passTurn() {
+          clearMove()
+          result.value = 'Tour passé'
+        }
+
+        return {
+          rack,
+          onDragStart,
+          placed,
+          play,
+          result,
+          LETTER_POINTS,
+          onRackDrop,
+          gridRef,
+          removed,
+          clearMove,
+          shuffleRack,
+          passTurn,
+          moved
+        }
       },
       template: `
-          <Grid @placed="placed" />
-          <div class="rack">
+          <Grid @placed="placed" @removed="removed" @moved="moved" ref="gridRef" :letter-points="LETTER_POINTS" />
+          <div class="rack" @dragover.prevent @drop="onRackDrop($event, rack.length)">
             <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
-                 @dragstart="onDragStart($event, idx)">
-              {{ letter }}
+                 @dragstart="onDragStart($event, idx)"
+                 @dragover.prevent
+                 @drop="onRackDrop($event, idx)">
+              <span class="letter">{{ letter }}</span>
+              <span class="points">{{ LETTER_POINTS[letter] }}</span>
             </div>
           </div>
           <div class="validation">
             <button @click="play">Valider le coup</button>
+            <button @click="clearMove">Effacer</button>
+            <button @click="shuffleRack">Échanger</button>
+            <button @click="passTurn">Passer</button>
             <p>{{ result }}</p>
           </div>
         `
