@@ -54,34 +54,51 @@
       }
 
       const Grid = await loadModule('./components/Grid.vue', options)
-      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-
-      function randomRack() {
-        return Array.from({ length: 7 }, () => letters[Math.floor(Math.random() * letters.length)])
-      }
 
       const App = {
         components: { Grid },
         setup() {
-          const rack = Vue.ref(randomRack())
-          const word = Vue.ref('')
+          const rack = Vue.ref([])
+          const placements = Vue.ref([])
           const result = Vue.ref('')
+
+          async function init() {
+            const res = await fetch('http://localhost:8000/start', { method: 'POST' })
+            const data = await res.json()
+            rack.value = data.rack
+          }
+          init()
 
           function onDragStart(e, idx) {
             e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx }))
           }
 
-          function placed(idx) {
-            rack.value.splice(idx, 1)
+          function placed(payload) {
+            rack.value.splice(payload.index, 1)
+            placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter })
           }
 
-          async function validate() {
-            const res = await fetch(`http://localhost:8000/validate?word=${word.value}`)
+          async function play() {
+            if (placements.value.length === 0) return
+            const res = await fetch('http://localhost:8000/play', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ placements: placements.value })
+            })
+            if (!res.ok) {
+              const err = await res.json()
+              result.value = err.detail || 'Coup invalide'
+              return
+            }
             const data = await res.json()
-            result.value = data.valid ? 'Mot valide' : 'Mot invalide'
+            result.value = `Score : ${data.score}`
+            const drawRes = await fetch(`http://localhost:8000/draw?n=${placements.value.length}`)
+            const drawData = await drawRes.json()
+            rack.value.push(...drawData.letters)
+            placements.value = []
           }
 
-          return { rack, onDragStart, placed, word, result, validate }
+          return { rack, onDragStart, placed, play, result }
         },
         template: `
           <Grid @placed="placed" />
@@ -92,8 +109,7 @@
             </div>
           </div>
           <div class="validation">
-            <input v-model="word" placeholder="Mot à valider" />
-            <button @click="validate">Valider</button>
+            <button @click="play">Valider le coup</button>
             <p>{{ result }}</p>
           </div>
         `
