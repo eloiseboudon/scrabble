@@ -4,6 +4,7 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import hashlib
 
 from . import models
 from .database import get_db
@@ -49,6 +50,38 @@ class PlayRequest(BaseModel):
     game_id: int
     user_id: int
     placements: list[Placement]
+
+
+class AuthRequest(BaseModel):
+    """Request model for user authentication."""
+    username: str
+    password: str
+
+
+@app.post("/register")
+def register(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+    """Create a new user and return its identifier."""
+    if db.query(models.User).filter_by(username=req.username).first():
+        raise HTTPException(status_code=400, detail="Username already exists")
+    hashed = hashlib.sha256(req.password.encode()).hexdigest()
+    user = models.User(username=req.username, hashed_password=hashed)
+    db.add(user)
+    db.commit()
+    return {"user_id": user.id}
+
+
+@app.post("/login")
+def login(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+    """Authenticate a user and return its identifier."""
+    hashed = hashlib.sha256(req.password.encode()).hexdigest()
+    user = (
+        db.query(models.User)
+        .filter_by(username=req.username, hashed_password=hashed)
+        .first()
+    )
+    if user is None:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    return {"user_id": user.id}
 
 
 @app.post("/start")
