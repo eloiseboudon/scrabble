@@ -123,6 +123,28 @@ def reset_game() -> None:
 reset_game()
 
 # ---------------------------------------------------------------------------
+# Loading persisted game state
+# ---------------------------------------------------------------------------
+
+def load_game_state(tiles: Iterable[Tuple[int, int, str]], racks: Iterable[str]) -> None:
+    """Populate board and bag from persisted *tiles* and *racks*."""
+    global bag, board, first_move
+    reset_game()
+    counts = {ltr: count for ltr, (count, _) in LETTER_DISTRIBUTION.items()}
+    board = [[None for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+    for r, c, letter in tiles:
+        board[r][c] = letter
+        counts[letter.upper()] -= 1
+    for rack in racks:
+        for letter in rack:
+            counts[letter.upper()] -= 1
+    bag = []
+    for letter, (total, _) in LETTER_DISTRIBUTION.items():
+        bag.extend([letter] * counts[letter])
+    random.shuffle(bag)
+    first_move = not list(tiles)
+
+# ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
 

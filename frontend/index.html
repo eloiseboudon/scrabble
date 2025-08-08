@@ -34,11 +34,13 @@
     const Game = await loadModule('./components/Game.vue', options)
     const Settings = await loadModule('./components/Settings.vue', options)
     const Profile = await loadModule('./components/Profile.vue', options)
+    const Login = await loadModule('./components/Login.vue', options)
 
     const App = {
-      components: { Grid, Home, Game, Settings, Profile },
+      components: { Grid, Home, Game, Settings, Profile, Login },
       setup() {
         const view = Vue.ref('home')
+        const userId = Vue.ref(localStorage.getItem('userId'))
         const ongoingGames = Vue.ref([])
         const finishedGames = Vue.ref([])
         const rack = Vue.ref([])
@@ -46,23 +48,39 @@
         const result = Vue.ref('')
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
-        let nextId = 1
+
+        function onAuth(id) {
+          userId.value = id
+          localStorage.setItem('userId', id)
+          view.value = 'home'
+        }
 
         async function newGame() {
-          const res = await fetch('http://localhost:8000/start', { method: 'POST' })
+          const res = await fetch('http://localhost:8000/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: Number(userId.value) })
+          })
           const data = await res.json()
           rack.value = data.rack
           placements.value = []
           result.value = ''
-          const game = { id: nextId++ }
+          const game = { id: data.game_id, player_id: data.player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
         }
 
-        function resumeGame(game) {
+        async function resumeGame(game) {
           currentGame.value = game
           view.value = 'game'
+          await Vue.nextTick()
+          const res = await fetch(`http://localhost:8000/game?game_id=${game.id}&player_id=${game.player_id}`)
+          const data = await res.json()
+          rack.value = data.rack
+          placements.value = []
+          result.value = ''
+          data.tiles.forEach(t => gameRef.value.gridRef.setTile(t.row, t.col, t.letter))
         }
 
         function finishGame() {
@@ -137,7 +155,11 @@
           const res = await fetch('http://localhost:8000/play', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ placements: placements.value })
+            body: JSON.stringify({
+              game_id: currentGame.value.id,
+              user_id: Number(userId.value),
+              placements: placements.value
+            })
           })
           if (!res.ok) {
             const err = await res.json()
@@ -146,7 +168,9 @@
           }
           const data = await res.json()
           result.value = `Score : ${data.score}`
-          const drawRes = await fetch(`http://localhost:8000/draw?n=${placements.value.length}`)
+          const drawRes = await fetch(
+            `http://localhost:8000/draw?n=${placements.value.length}&player_id=${currentGame.value.player_id}`
+          )
           const drawData = await drawRes.json()
           rack.value.push(...drawData.letters)
           placements.value = []
@@ -159,6 +183,7 @@
 
         return {
           view,
+          userId,
           ongoingGames,
           finishedGames,
           newGame,
@@ -177,11 +202,13 @@
           clearMove,
           shuffleRack,
           passTurn,
-          moved
+          moved,
+          onAuth
         }
       },
       template: `
-        <Home v-if="view==='home'"
+        <Login v-if="!userId" @auth="onAuth" />
+        <Home v-else-if="view==='home'"
               :ongoing-games="ongoingGames"
               :finished-games="finishedGames"
               @new-game="newGame"
