@@ -73,7 +73,7 @@ body {
   width: 30px;
   height: 30px;
   border: 1px solid #333;
-  background: var(--color-primary);
+  background: linear-gradient(to bottom, #F1D87A, #deb317);
   display: flex;
   justify-content: center;
   align-items: center;
