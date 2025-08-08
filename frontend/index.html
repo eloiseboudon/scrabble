@@ -75,6 +75,9 @@
           currentGame.value = game
           view.value = 'game'
           await Vue.nextTick()
+          while (!gameRef.value?.gridRef?.value) {
+            await Vue.nextTick()
+          }
           const res = await fetch(`http://localhost:8000/game?game_id=${game.id}&player_id=${game.player_id}`)
           const data = await res.json()
           rack.value = data.rack
