@@ -25,9 +25,25 @@ body {
 
 .validation {
   display: flex;
-  margin-top: 10px;
   justify-content: center;
+  margin-top: 10px;
+}
 
+.validation button {
+  margin: 0 5px;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  background: linear-gradient(to bottom, #F6BA79, #F29C3F);
+  box-shadow: 0 4px 0 #c7762e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  text-decoration: none;
+}
   button {
     margin: 0 5px;
     background-color: #F29C3F;
@@ -41,14 +57,21 @@ body {
     align-items: center;
   }
 
-  button:hover {
-    background-color: #F6BA79;
-  }
+.validation button:hover {
+  background: linear-gradient(to bottom, #F9C68A, #F6BA79);
+}
 
+.validation button:active {
+  box-shadow: 0 2px 0 #c7762e;
+  transform: translateY(2px);
+}
   svg {
     width: 20px;
     margin-right: 5px;
   }
+.validation svg {
+  width: 20px;
+  height: 20px;
 }
 
 .scrabble-grid {
@@ -65,7 +88,7 @@ body {
   width: 30px;
   height: 30px;
   border: 1px solid #333;
-  background: var(--color-primary);
+  background: linear-gradient(to bottom, #F1D87A, #deb317);
   display: flex;
   justify-content: center;
   align-items: center;
