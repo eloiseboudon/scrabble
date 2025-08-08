@@ -44,6 +44,18 @@ body {
   gap: 0.25rem;
   text-decoration: none;
 }
+  button {
+    margin: 0 5px;
+    background-color: #F29C3F;
+    color: #fff;
+    border: none;
+    padding: 0.5rem 1rem;
+    text-decoration: none;
+    cursor: pointer;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+  }
 
 .validation button:hover {
   background: linear-gradient(to bottom, #F9C68A, #F6BA79);
@@ -53,7 +65,10 @@ body {
   box-shadow: 0 2px 0 #c7762e;
   transform: translateY(2px);
 }
-
+  svg {
+    width: 20px;
+    margin-right: 5px;
+  }
 .validation svg {
   width: 20px;
   height: 20px;
