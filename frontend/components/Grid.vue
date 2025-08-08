@@ -183,28 +183,28 @@ defineExpose({ clearAll, takeBack })
 }
 
 .TW {
-  background-color: #CB514E;
+  background: linear-gradient(to bottom right, #CB514E, #A94442);
   color: #fff;
 }
 
 .DW,
 .CENTER {
-  background-color: #C18AB3;
+  background: linear-gradient(to bottom right, #C18AB3, #9C6F9E);
   color: #fff;
 }
 
 .TL {
-  background-color: #87B5D2;
+  background: linear-gradient(to bottom right, #87B5D2, #5C8EAB);
   color: #fff;
 }
 
 .DL {
-  background-color: #90caf9;
+  background: linear-gradient(to bottom right, #90caf9, #5a9bdc);
   color: #fff;
 }
 
 .use {
-  background-color: #EBBF56;
+  background: linear-gradient(to bottom right, #EBBF56, #D6A63B);
   color: #000;
 }
 </style>
