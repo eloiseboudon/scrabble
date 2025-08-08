@@ -80,7 +80,7 @@
           rack.value = data.rack
           placements.value = []
           result.value = ''
-          data.tiles.forEach(t => gameRef.value.gridRef.setTile(t.row, t.col, t.letter))
+          data.tiles.forEach(t => gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter))
         }
 
         function finishGame() {
@@ -109,7 +109,7 @@
             const insert = from < idx ? idx - 1 : idx
             rack.value.splice(insert, 0, tile)
           } else if (data.source === 'board') {
-            const letter = gameRef.value.gridRef.takeBack(data.row, data.col)
+            const letter = gameRef.value.gridRef.value.takeBack(data.row, data.col)
             if (!letter) return
             const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
             if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
@@ -138,7 +138,7 @@
         }
 
         function clearMove() {
-          gameRef.value.gridRef.clearAll(placements.value)
+          gameRef.value.gridRef.value.clearAll(placements.value)
           placements.value.forEach(p => rack.value.push(p.letter))
           placements.value = []
         }
