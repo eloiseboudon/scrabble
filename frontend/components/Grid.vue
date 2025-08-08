@@ -149,7 +149,11 @@ function takeBack(row, col) {
   return letter
 }
 
-defineExpose({ clearAll, takeBack })
+function setTile(row, col, letter) {
+  grid.value[row][col] = letter
+}
+
+defineExpose({ clearAll, takeBack, setTile })
 </script>
 
 <style scoped>

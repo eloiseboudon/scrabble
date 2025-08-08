@@ -8,7 +8,7 @@ import hashlib
 
 from . import models
 from .database import get_db
-from .game import DICTIONARY, draw_tiles, place_tiles, reset_game
+from .game import DICTIONARY, draw_tiles, load_game_state, place_tiles, reset_game
 
 app = FastAPI()
 
@@ -50,6 +50,17 @@ class PlayRequest(BaseModel):
     game_id: int
     user_id: int
     placements: list[Placement]
+
+
+class Tile(BaseModel):
+    row: int
+    col: int
+    letter: str
+
+
+class GameState(BaseModel):
+    rack: list[str]
+    tiles: list[Tile]
 
 
 class AuthRequest(BaseModel):
@@ -96,6 +107,25 @@ def start(req: StartRequest, db: Session = Depends(get_db)) -> dict[str, int | l
     db.add(player)
     db.commit()
     return {"game_id": game.id, "player_id": player.id, "rack": rack}
+
+
+@app.get("/game")
+def get_game(game_id: int, player_id: int, db: Session = Depends(get_db)) -> GameState:
+    """Retrieve a game's state, rebuilding board and returning rack and tiles."""
+    tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
+    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
+    player = (
+        db.query(models.GamePlayer)
+        .filter_by(game_id=game_id, id=player_id)
+        .first()
+    )
+    if player is None:
+        raise HTTPException(status_code=404, detail="Player not found")
+    return GameState(
+        rack=list(player.rack),
+        tiles=[Tile(row=t.x, col=t.y, letter=t.letter) for t in tiles],
+    )
 
 
 @app.get("/draw")
