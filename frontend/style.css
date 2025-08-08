@@ -37,6 +37,8 @@ body {
     text-decoration: none;
     cursor: pointer;
     border-radius: 10px;
+    display: flex;
+    align-items: center;
   }
 
   button:hover {
@@ -45,6 +47,7 @@ body {
 
   svg {
     width: 20px;
+    margin-right: 5px;
   }
 }
 
