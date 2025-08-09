@@ -11,7 +11,9 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from backend.database import Base, SessionLocal, engine  # type: ignore
+from fastapi import HTTPException
 from backend.main import (
+    AuthRequest,
     ChallengeRequest,
     CreateGameRequest,
     ExchangeRequest,
@@ -19,6 +21,7 @@ from backend.main import (
     MoveRequest,
     PassRequest,
     ResignRequest,
+    get_user_by_username,
     challenge_move,
     create_game,
     exchange_tiles,
@@ -26,6 +29,7 @@ from backend.main import (
     join_game,
     pass_turn,
     play_move,
+    register,
     resign_game,
     start_game,
 )  # type: ignore
@@ -87,3 +91,21 @@ def test_exchange_pass_resign() -> None:
     with SessionLocal() as db:
         resigned = resign_game(game_id, ResignRequest(player_id=p2), db=db)
     assert resigned["status"] == "resigned"
+
+
+def test_user_lookup() -> None:
+    with SessionLocal() as db:
+        user_id = register(AuthRequest(username="alice", password="pwd"), db=db)[
+            "user_id"
+        ]
+    with SessionLocal() as db:
+        res = get_user_by_username("alice", db=db)
+    assert res.user_id == user_id
+
+    with SessionLocal() as db:
+        try:
+            get_user_by_username("unknown", db=db)
+        except HTTPException as exc:
+            assert exc.status_code == 404
+        else:  # pragma: no cover - should not reach
+            assert False

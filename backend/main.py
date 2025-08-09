@@ -117,6 +117,11 @@ class AuthRequest(BaseModel):
     password: str
 
 
+class UserLookupResponse(BaseModel):
+    """Response model for user lookup by username."""
+    user_id: int
+
+
 @app.post("/register")
 def register(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     """Create a new user and return its identifier."""
@@ -141,6 +146,17 @@ def login(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return {"user_id": user.id}
+
+
+@app.get("/users/by-username")
+def get_user_by_username(
+    username: str, db: Session = Depends(get_db)
+) -> UserLookupResponse:
+    """Retrieve a user's identifier by their username."""
+    user = db.query(models.User).filter_by(username=username).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    return UserLookupResponse(user_id=user.id)
 
 
 @app.post("/start")
