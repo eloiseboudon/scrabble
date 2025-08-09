@@ -1,7 +1,17 @@
 <template>
   <div class="home">
     <h1>Scrabble</h1>
-    <button @click="$emit('new-game')">Créer une nouvelle partie</button>
+    <div v-if="!showOptions">
+      <button @click="showOptions = true">Créer une nouvelle partie</button>
+    </div>
+    <div v-else class="new-game-options">
+      <input v-model="opponent" placeholder="Pseudo de l'ami" />
+      <div class="buttons">
+        <button @click="invite">Inviter un ami</button>
+        <button @click="vsBot">Jouer contre un bot</button>
+        <button @click="cancel">Annuler</button>
+      </div>
+    </div>
     <div id="ongoing-games" class="game-menu">
       <h2>Parties en cours</h2>
       <ul>
@@ -33,7 +43,30 @@ defineProps({
   finishedGames: { type: Array, default: () => [] }
 })
 
-defineEmits(['new-game', 'resume', 'navigate'])
+import { ref } from 'vue'
+
+const emit = defineEmits(['new-game-friend', 'new-game-bot', 'resume', 'navigate'])
+
+const showOptions = ref(false)
+const opponent = ref('')
+
+function invite() {
+  if (opponent.value.trim() !== '') {
+    emit('new-game-friend', opponent.value.trim())
+    opponent.value = ''
+    showOptions.value = false
+  }
+}
+
+function vsBot() {
+  emit('new-game-bot')
+  showOptions.value = false
+}
+
+function cancel() {
+  opponent.value = ''
+  showOptions.value = false
+}
 </script>
 
 <style scoped>
@@ -48,5 +81,17 @@ nav.nav {
   display: flex;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+.new-game-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.new-game-options .buttons {
+  display: flex;
+  gap: 0.5rem;
 }
 </style>

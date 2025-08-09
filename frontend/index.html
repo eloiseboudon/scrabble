@@ -64,17 +64,71 @@
           loadGames()
         }
 
-        async function newGame() {
-          const res = await fetch('http://localhost:8000/start', {
+        async function newGameBot() {
+          const resGame = await fetch('http://localhost:8000/games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vs_computer: true })
+          })
+          const { game_id } = await resGame.json()
+          const joinRes = await fetch(`http://localhost:8000/games/${game_id}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: Number(userId.value) })
           })
-          const data = await res.json()
-          rack.value = data.rack
+          const { player_id } = await joinRes.json()
+          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_computer: true })
+          })
+          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+            method: 'POST'
+          })
+          const startData = await startRes.json()
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
           placements.value = []
           result.value = ''
-          const game = { id: data.game_id, player_id: data.player_id }
+          const game = { id: game_id, player_id }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
+        }
+
+        async function newGameFriend(pseudo) {
+          const resUser = await fetch(`http://localhost:8000/users/by-username?username=${encodeURIComponent(pseudo)}`)
+          if (!resUser.ok) {
+            alert('Utilisateur introuvable')
+            return
+          }
+          const { user_id: friendId } = await resUser.json()
+          const resGame = await fetch('http://localhost:8000/games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+          const { game_id } = await resGame.json()
+          const join1 = await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: Number(userId.value) })
+          })
+          const { player_id } = await join1.json()
+          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: friendId })
+          })
+          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+            method: 'POST'
+          })
+          const startData = await startRes.json()
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
+          placements.value = []
+          result.value = ''
+          const game = { id: game_id, player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
@@ -204,7 +258,8 @@
           userId,
           ongoingGames,
           finishedGames,
-          newGame,
+          newGameFriend,
+          newGameBot,
           resumeGame,
           finishGame,
           goHome,
@@ -229,7 +284,8 @@
         <Home v-else-if="view==='home'"
               :ongoing-games="ongoingGames"
               :finished-games="finishedGames"
-              @new-game="newGame"
+              @new-game-friend="newGameFriend"
+              @new-game-bot="newGameBot"
               @resume="resumeGame"
               @navigate="view=$event" />
           <Game v-else-if="view==='game'"
