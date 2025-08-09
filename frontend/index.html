@@ -46,6 +46,7 @@
         const rack = Vue.ref([])
         const placements = Vue.ref([])
         const result = Vue.ref('')
+        const score = Vue.ref(0)
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
 
@@ -90,6 +91,7 @@
           rack.value = info.rack
           placements.value = []
           result.value = ''
+          score.value = 0
           const game = { id: game_id, player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -128,6 +130,7 @@
           rack.value = info.rack
           placements.value = []
           result.value = ''
+          score.value = 0
           const game = { id: game_id, player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -142,6 +145,7 @@
           rack.value = data.rack
           placements.value = []
           result.value = ''
+          score.value = data.scores[game.player_id] || 0
           await Vue.nextTick()
           data.tiles.forEach(t => gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter))
         }
@@ -236,6 +240,7 @@
           }
           const data = await res.json()
           result.value = `Score : ${data.score}`
+          score.value += data.score
           const drawRes = await fetch(
             `http://localhost:8000/draw?n=${placements.value.length}&player_id=${currentGame.value.player_id}`
           )
@@ -276,7 +281,8 @@
           shuffleRack,
           passTurn,
           moved,
-          onAuth
+          onAuth,
+          score
         }
       },
       template: `
@@ -292,6 +298,7 @@
                 ref="gameRef"
                 :rack="rack"
                 :result="result"
+                :score="score"
                 :letter-points="LETTER_POINTS"
                 @home="goHome"
                 @finish="finishGame"
