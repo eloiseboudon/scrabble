@@ -211,7 +211,19 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
     cols = {c for _, c, _, _ in placements}
     if len(rows) != 1 and len(cols) != 1:
         raise ValueError("Tiles must be in a single row or column")
-    horizontal = len(rows) == 1
+
+    # When a single tile is played, infer orientation from neighbouring tiles
+    if len(placements) == 1:
+        r, c, _, _ = placements[0]
+        if (
+            (r > 0 and board[r - 1][c] is not None)
+            or (r < BOARD_SIZE - 1 and board[r + 1][c] is not None)
+        ):
+            horizontal = False
+        else:
+            horizontal = True
+    else:
+        horizontal = len(rows) == 1
 
     for r, c, letter, _ in placements:
         if board[r][c] is not None:
