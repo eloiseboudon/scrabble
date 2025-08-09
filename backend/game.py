@@ -212,6 +212,12 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
     if len(rows) != 1 and len(cols) != 1:
         raise ValueError("Tiles must be in a single row or column")
     horizontal = len(rows) == 1
+    if len(placements) == 1:
+        r, c, _, _ = placements[0]
+        horizontal = (
+            (c > 0 and board[r][c - 1] is not None)
+            or (c < BOARD_SIZE - 1 and board[r][c + 1] is not None)
+        )
 
     for r, c, letter, _ in placements:
         if board[r][c] is not None:
