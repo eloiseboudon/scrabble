@@ -224,6 +224,9 @@ def get_game(game_id: int, player_id: int, db: Session = Depends(get_db)) -> Gam
     """Retrieve a game's state, rebuilding board and returning rack and tiles."""
     tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    game = db.get(models.Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
         db.query(models.GamePlayer)
@@ -232,9 +235,11 @@ def get_game(game_id: int, player_id: int, db: Session = Depends(get_db)) -> Gam
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
+    state = _state_response(game, players)
     return GameState(
         rack=list(player.rack),
         tiles=[Tile(row=t.x, col=t.y, letter=t.letter) for t in tiles],
+        **state,
     )
 
 
