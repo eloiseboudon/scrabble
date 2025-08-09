@@ -49,10 +49,19 @@
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
 
+        async function loadGames() {
+          if (!userId.value) return
+          const res = await fetch(`http://localhost:8000/games?user_id=${userId.value}`)
+          const data = await res.json()
+          ongoingGames.value = data.ongoing
+          finishedGames.value = data.finished
+        }
+
         function onAuth(id) {
           userId.value = id
           localStorage.setItem('userId', id)
           view.value = 'home'
+          loadGames()
         }
 
         async function newGame() {
@@ -83,8 +92,13 @@
           data.tiles.forEach(t => gameRef.value.gridRef.setTile(t.row, t.col, t.letter))
         }
 
-        function finishGame() {
+        async function finishGame() {
           if (currentGame.value) {
+            await fetch('http://localhost:8000/finish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ game_id: currentGame.value.id })
+            })
             const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
             if (idx !== -1) ongoingGames.value.splice(idx, 1)
             finishedGames.value.push(currentGame.value)
@@ -179,6 +193,10 @@
         function passTurn() {
           clearMove()
           result.value = 'Tour passé'
+        }
+
+        if (userId.value) {
+          loadGames()
         }
 
         return {
