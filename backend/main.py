@@ -108,7 +108,22 @@ class Tile(BaseModel):
 class GameState(BaseModel):
     rack: list[str]
     tiles: list[Tile]
-    bag_count: int | None = None
+    bag_count: int
+    next_player_id: int
+    scores: dict[int, int]
+    passes_in_a_row: int
+    phase: str
+
+
+def _state_response(game: models.Game, players: list[models.GamePlayer]) -> dict[str, object]:
+    """Build a state dictionary with common game fields."""
+    return {
+        "next_player_id": game.next_player_id if game.next_player_id is not None else 0,
+        "bag_count": len(game_module.bag),
+        "scores": {p.id: p.score for p in players},
+        "passes_in_a_row": game.passes_in_a_row,
+        "phase": game.phase,
+    }
 
 
 class AuthRequest(BaseModel):
@@ -287,6 +302,8 @@ def join_game(game_id: int, req: JoinGameRequest, db: Session = Depends(get_db))
     game = db.get(models.Game, game_id)
     if game is None:
         raise HTTPException(status_code=404, detail="Game not found")
+    if game.started:
+        raise HTTPException(status_code=409, detail="game_already_started")
     count = db.query(models.GamePlayer).filter_by(game_id=game_id).count()
     if count >= game.max_players:
         raise HTTPException(status_code=409, detail="game_full")
@@ -302,7 +319,9 @@ def join_game(game_id: int, req: JoinGameRequest, db: Session = Depends(get_db))
 
 
 @app.post("/games/{game_id}/start")
-def start_game(game_id: int, db: Session = Depends(get_db)) -> dict[str, object]:
+def start_game(
+    game_id: int, seed: int | None = None, db: Session = Depends(get_db)
+) -> dict[str, object]:
     """Start a game once enough players have joined."""
     game = db.get(models.Game, game_id)
     if game is None:
@@ -310,20 +329,32 @@ def start_game(game_id: int, db: Session = Depends(get_db)) -> dict[str, object]
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     if len(players) < 2:
         raise HTTPException(status_code=400, detail="insufficient_players")
+    if seed is not None:
+        random.seed(seed)
     reset_game()
     info: list[dict[str, object]] = []
     for p in players:
         rack = draw_tiles(7)
         p.rack = "".join(rack)
+        p.score = 0
         info.append({"player_id": p.id, "rack": rack})
+    game.started = True
+    game.phase = "running"
+    game.next_player_id = players[0].id
+    game.passes_in_a_row = 0
     db.commit()
-    next_player_id = players[0].id
-    return {"players": info, "bag_count": len(game_module.bag), "next_player_id": next_player_id}
+    state = _state_response(game, players)
+    return {"players": info, **state}
 
 
 @app.post("/games/{game_id}/play")
-def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> dict[str, int]:
-    """Play a move in the specified game and return the score."""
+def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> dict[str, object]:
+    """Play a move in the specified game and return updated state."""
+    game = db.get(models.Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if req.player_id != game.next_player_id:
+        raise HTTPException(status_code=409, detail="not_your_turn")
     tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
@@ -348,9 +379,19 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
         letter = "?" if p.blank else p.letter.upper()
         if letter in rack_list:
             rack_list.remove(letter)
+    drawn = draw_tiles(7 - len(rack_list))
+    rack_list.extend(drawn)
     player.rack = "".join(rack_list)
+    player.score += score
+    players_sorted = sorted(players, key=lambda pl: pl.id)
+    idx = next(i for i, pl in enumerate(players_sorted) if pl.id == req.player_id)
+    game.next_player_id = players_sorted[(idx + 1) % len(players_sorted)].id
+    game.passes_in_a_row = 0
     db.commit()
-    return {"score": score}
+    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    state = _state_response(game, players)
+    state["score"] = score
+    return state
 
 
 @app.post("/games/{game_id}/exchange")
@@ -411,6 +452,9 @@ def get_game_state(
     """Retrieve the current state of a game."""
     tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    game = db.get(models.Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
         db.query(models.GamePlayer)
@@ -419,9 +463,14 @@ def get_game_state(
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
+    state = _state_response(game, players)
     return GameState(
         rack=list(player.rack),
         tiles=[Tile(row=t.x, col=t.y, letter=t.letter) for t in tiles],
-        bag_count=len(game_module.bag),
+        bag_count=state["bag_count"],
+        next_player_id=state["next_player_id"],
+        scores=state["scores"],
+        passes_in_a_row=state["passes_in_a_row"],
+        phase=state["phase"],
     )
 

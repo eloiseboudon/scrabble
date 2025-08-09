@@ -31,6 +31,10 @@ class Game(Base):
     max_players = Column(Integer, nullable=False)
     vs_computer = Column(Boolean, default=False, nullable=False)
     finished = Column(Boolean, default=False, nullable=False)
+    started = Column(Boolean, default=False, nullable=False)
+    next_player_id = Column(Integer, nullable=True)
+    passes_in_a_row = Column(Integer, default=0, nullable=False)
+    phase = Column(String, default="waiting_players", nullable=False)
 
     __table_args__ = (
         CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),
@@ -49,6 +53,7 @@ class GamePlayer(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     is_computer = Column(Boolean, default=False, nullable=False)
     rack = Column(String, nullable=False)
+    score = Column(Integer, default=0, nullable=False)
 
     game = relationship("Game", back_populates="players")
     user = relationship("User", back_populates="games")

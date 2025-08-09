@@ -1,4 +1,4 @@
-.PHONY: install backend frontend db migrate upgrade clean
+.PHONY: install backend frontend db migrate upgrade clean test
 
 VENV=.venv
 PYTHON=$(VENV)/bin/python
@@ -23,7 +23,10 @@ migrate:
 	$(VENV)/bin/alembic revision --autogenerate -m "migration"
 
 upgrade:
-	$(VENV)/bin/alembic upgrade head
+        $(VENV)/bin/alembic upgrade head
+
+test: install
+	@$(PYTHON) -m pytest backend/tests -q && echo "All tests passed" || (echo "\nTests failed. See output above." && exit 1)
 
 clean:
-	rm -rf .venv
+        rm -rf .venv

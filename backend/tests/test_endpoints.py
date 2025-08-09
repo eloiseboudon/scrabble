@@ -34,6 +34,7 @@ from backend.main import (
     start_game,
 )  # type: ignore
 
+Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
 
@@ -46,7 +47,7 @@ def _setup_game() -> tuple[int, int, int, list[str]]:
     with SessionLocal() as db:
         p2 = join_game(game_id, JoinGameRequest(user_id=2), db=db)["player_id"]
     with SessionLocal() as db:
-        start_data = start_game(game_id, db=db)
+        start_data = start_game(game_id, seed=0, db=db)
     rack1 = next(p["rack"] for p in start_data["players"] if p["player_id"] == p1)
     return game_id, p1, p2, rack1
 
@@ -68,8 +69,8 @@ def test_game_lifecycle() -> None:
 
     with SessionLocal() as db:
         state = get_game_state(game_id, player_id=p1, db=db)
-    assert len(state.rack) == 4
-    assert state.bag_count == 102 - 14
+    assert len(state.rack) == 7
+    assert state.bag_count == 102 - 14 - 3
     assert len(state.tiles) == 3
 
 
