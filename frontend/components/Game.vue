@@ -1,7 +1,8 @@
 <template>
   <div class="game">
-    <button @click="$emit('home')">Accueil</button>
-    <button @click="$emit('finish')">Terminer la partie</button>
+    <div class="grid-menu"><button @click="$emit('home')">Accueil</button>
+      <button @click="$emit('finish')">Terminer la partie</button>
+    </div>
     <Grid @placed="$emit('placed', $event)" @removed="$emit('removed', $event)" @moved="$emit('moved', $event)"
       ref="gridRef" :letter-points="letterPoints" />
     <div class="rack" @dragover.prevent @drop="$emit('rack-drop', $event, rack.length)">
