@@ -137,12 +137,12 @@
         async function resumeGame(game) {
           currentGame.value = game
           view.value = 'game'
-          await Vue.nextTick()
           const res = await fetch(`http://localhost:8000/game?game_id=${game.id}&player_id=${game.player_id}`)
           const data = await res.json()
           rack.value = data.rack
           placements.value = []
           result.value = ''
+          await Vue.nextTick()
           data.tiles.forEach(t => gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter))
         }
 
