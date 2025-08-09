@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, UTC
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -27,7 +27,11 @@ class Game(Base):
     __tablename__ = "games"
 
     id = Column(Integer, primary_key=True)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        nullable=False,
+    )
     max_players = Column(Integer, nullable=False)
     vs_computer = Column(Boolean, default=False, nullable=False)
     finished = Column(Boolean, default=False, nullable=False)
