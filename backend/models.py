@@ -30,6 +30,7 @@ class Game(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     max_players = Column(Integer, nullable=False)
     vs_computer = Column(Boolean, default=False, nullable=False)
+    finished = Column(Boolean, default=False, nullable=False)
 
     __table_args__ = (
         CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),

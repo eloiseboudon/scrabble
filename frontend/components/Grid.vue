@@ -151,6 +151,9 @@ function takeBack(row, col) {
 
 function setTile(row, col, letter) {
   grid.value[row][col] = letter
+  if (!board[row][col].includes('use')) {
+    board[row][col] += ' use'
+  }
 }
 
 defineExpose({ clearAll, takeBack, setTile })

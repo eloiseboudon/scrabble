@@ -52,6 +52,20 @@ class PlayRequest(BaseModel):
     placements: list[Placement]
 
 
+class FinishRequest(BaseModel):
+    game_id: int
+
+
+class GameInfo(BaseModel):
+    id: int
+    player_id: int
+
+
+class GamesResponse(BaseModel):
+    ongoing: list[GameInfo]
+    finished: list[GameInfo]
+
+
 class Tile(BaseModel):
     row: int
     col: int
@@ -107,6 +121,37 @@ def start(req: StartRequest, db: Session = Depends(get_db)) -> dict[str, int | l
     db.add(player)
     db.commit()
     return {"game_id": game.id, "player_id": player.id, "rack": rack}
+
+
+@app.post("/finish")
+def finish(req: FinishRequest, db: Session = Depends(get_db)) -> dict[str, str]:
+    """Mark a game as finished."""
+    game = db.get(models.Game, req.game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    game.finished = True
+    db.commit()
+    return {"status": "ok"}
+
+
+@app.get("/games")
+def list_games(user_id: int, db: Session = Depends(get_db)) -> GamesResponse:
+    """Return games for a user, separated by status."""
+    records = (
+        db.query(models.Game, models.GamePlayer)
+        .join(models.GamePlayer)
+        .filter(models.GamePlayer.user_id == user_id)
+        .all()
+    )
+    ongoing: list[GameInfo] = []
+    finished: list[GameInfo] = []
+    for game, player in records:
+        info = GameInfo(id=game.id, player_id=player.id)
+        if game.finished:
+            finished.append(info)
+        else:
+            ongoing.append(info)
+    return GamesResponse(ongoing=ongoing, finished=finished)
 
 
 @app.get("/game")
