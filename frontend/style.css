@@ -194,6 +194,11 @@ button:active,
   flex-wrap: wrap;
 }
 
+.validation .score {
+  font-weight: bold;
+  align-self: center;
+}
+
 .validation button {
   background: linear-gradient(135deg, #F6BA79, #F29C3F);
   box-shadow: 0 4px 12px rgba(242, 156, 63, 0.2);
