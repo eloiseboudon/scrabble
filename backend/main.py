@@ -394,8 +394,49 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     game.passes_in_a_row = 0
     db.commit()
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
+    bot_move: list[tuple[int, int, str, bool]] | None = None
+    bot_score = 0
+    if game.vs_computer:
+        bot_player = next((p for p in players if p.is_computer), None)
+        if bot_player and game.next_player_id == bot_player.id:
+            move = game_module.bot_turn(list(bot_player.rack))
+            if move:
+                bot_move, _ = move
+                try:
+                    bot_score = place_tiles(bot_move)
+                except ValueError:
+                    bot_move = []
+                    bot_score = 0
+                rack_bot = list(bot_player.rack)
+                for r, c, letter, blank in bot_move:
+                    tile = models.PlacedTile(
+                        game_id=game_id,
+                        user_id=bot_player.id,
+                        x=r,
+                        y=c,
+                        letter=letter.upper(),
+                    )
+                    db.add(tile)
+                    ltr = "?" if blank else letter.upper()
+                    if ltr in rack_bot:
+                        rack_bot.remove(ltr)
+                drawn_bot = draw_tiles(7 - len(rack_bot))
+                rack_bot.extend(drawn_bot)
+                bot_player.rack = "".join(rack_bot)
+                bot_player.score += bot_score
+                players_sorted = sorted(players, key=lambda pl: pl.id)
+                idx_bot = next(i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id)
+                game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
+                game.passes_in_a_row = 0
+                db.commit()
+                players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
     state = _state_response(game, players)
     state["score"] = score
+    if bot_move is not None:
+        state["bot_move"] = bot_move
+        state["bot_score"] = bot_score
     return state
 
 
