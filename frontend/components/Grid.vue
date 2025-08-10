@@ -17,80 +17,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, defineExpose, ref } from 'vue'
+
 const { letterPoints } = defineProps({ letterPoints: { type: Object, required: true } })
 const emit = defineEmits(['placed', 'removed', 'moved'])
 
 const size = 15
-const board = Array.from({ length: size }, () => Array(size).fill(''))
 
-function mark(coords, code) {
-  coords.forEach(([r, c]) => (board[r][c] = code))
-}
+// ✅ board RÉACTIF
+const boardRef = ref(Array.from({ length: size }, () => Array(size).fill('')))
+const board = computed(() => boardRef.value)
 
-mark(
-  [
-    [0, 0], [0, 7], [0, 14],
-    [7, 0], [7, 14],
-    [14, 0], [14, 7], [14, 14]
-  ],
-  'TW'
-)
+function mark(coords, code) { coords.forEach(([r, c]) => (boardRef.value[r][c] = code)) }
 
-mark(
-  [
-    [1, 1], [2, 2], [3, 3], [4, 4],
-    [10, 10], [11, 11], [12, 12], [13, 13],
-    [1, 13], [2, 12], [3, 11], [4, 10],
-    [10, 4], [11, 3], [12, 2], [13, 1]
-  ],
-  'DW'
-)
-
-mark(
-  [
-    [1, 5], [1, 9],
-    [5, 1], [5, 5], [5, 9], [5, 13],
-    [9, 1], [9, 5], [9, 9], [9, 13],
-    [13, 5], [13, 9]
-  ],
-  'TL'
-)
-
-mark(
-  [
-    [0, 3], [0, 11],
-    [2, 6], [2, 8],
-    [3, 0], [3, 7], [3, 14],
-    [6, 2], [6, 6], [6, 8], [6, 12],
-    [7, 3], [7, 11],
-    [8, 2], [8, 6], [8, 8], [8, 12],
-    [11, 0], [11, 7], [11, 14],
-    [12, 6], [12, 8],
-    [14, 3], [14, 11]
-  ],
-  'DL'
-)
-
-board[7][7] = 'CENTER'
+mark([[0, 0], [0, 7], [0, 14], [7, 0], [7, 14], [14, 0], [14, 7], [14, 14]], 'TW')
+mark([[1, 1], [2, 2], [3, 3], [4, 4], [10, 10], [11, 11], [12, 12], [13, 13], [1, 13], [2, 12], [3, 11], [4, 10], [10, 4], [11, 3], [12, 2], [13, 1]], 'DW')
+mark([[1, 5], [1, 9], [5, 1], [5, 5], [5, 9], [5, 13], [9, 1], [9, 5], [9, 9], [9, 13], [13, 5], [13, 9]], 'TL')
+mark([[0, 3], [0, 11], [2, 6], [2, 8], [3, 0], [3, 7], [3, 14], [6, 2], [6, 6], [6, 8], [6, 12], [7, 3], [7, 11], [8, 2], [8, 6], [8, 8], [8, 12], [11, 0], [11, 7], [11, 14], [12, 6], [12, 8], [14, 3], [14, 11]], 'DL')
+boardRef.value[7][7] = 'CENTER'
 
 const grid = ref(Array.from({ length: size }, () => Array(size).fill('')))
 
 function label(type) {
-  switch (type) {
-    case 'TW':
-      return 'TW'
-    case 'DW':
-      return 'DW'
-    case 'TL':
-      return 'TL'
-    case 'DL':
-      return 'DL'
-    case 'CENTER':
-      return '★'
-    default:
-      return ''
-  }
+  switch (type) { case 'TW': return 'TW'; case 'DW': return 'DW'; case 'TL': return 'TL'; case 'DL': return 'DL'; case 'CENTER': return '★'; default: return '' }
 }
 
 function onDrop(e, row, col) {
@@ -99,27 +48,25 @@ function onDrop(e, row, col) {
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     if (data.source === 'rack' && data.letter) {
       grid.value[row][col] = data.letter
-      board[row][col] += " use"
+      if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
       emit('placed', { index: data.index, row, col, letter: data.letter })
     } else if (data.source === 'board') {
       const letter = grid.value[data.row][data.col]
       if (!letter) return
       grid.value[data.row][data.col] = ''
-      board[data.row][data.col] = board[data.row][data.col].replace(' use', '')
+      boardRef.value[data.row][data.col] = boardRef.value[data.row][data.col].replace(' use', '')
       grid.value[row][col] = letter
-      board[row][col] += " use"
+      if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
       emit('moved', { fromRow: data.row, fromCol: data.col, toRow: row, toCol: col, letter })
     }
-  } catch (_) {
-    /* ignore malformed drops */
-  }
+  } catch { }
 }
 
 function remove(row, col) {
   const letter = grid.value[row][col]
   if (!letter) return
   grid.value[row][col] = ''
-  board[row][col] = board[row][col].replace(' use', '')
+  boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
   emit('removed', { row, col, letter })
 }
 
@@ -127,7 +74,7 @@ function clearAll(placements) {
   placements.forEach(({ row, col }) => {
     if (grid.value[row][col]) {
       grid.value[row][col] = ''
-      board[row][col] = board[row][col].replace(' use', '')
+      boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
     }
   })
 }
@@ -135,25 +82,20 @@ function clearAll(placements) {
 function onDragStart(e, row, col) {
   const letter = grid.value[row][col]
   if (!letter) return
-  e.dataTransfer.setData(
-    'text/plain',
-    JSON.stringify({ source: 'board', row, col, letter })
-  )
+  e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'board', row, col, letter }))
 }
 
 function takeBack(row, col) {
   const letter = grid.value[row][col]
   if (!letter) return null
   grid.value[row][col] = ''
-  board[row][col] = board[row][col].replace(' use', '')
+  boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
   return letter
 }
 
 function setTile(row, col, letter) {
   grid.value[row][col] = letter
-  if (!board[row][col].includes('use')) {
-    board[row][col] += ' use'
-  }
+  if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
 }
 
 defineExpose({ clearAll, takeBack, setTile })
@@ -164,11 +106,11 @@ defineExpose({ clearAll, takeBack, setTile })
   display: grid;
   grid-template-rows: repeat(15, 30px);
   grid-template-columns: repeat(15, 30px);
-  border: 1px solid #ccc;
+  border: 1px solid #ccc
 }
 
 .row {
-  display: contents;
+  display: contents
 }
 
 .cell {
@@ -178,40 +120,40 @@ defineExpose({ clearAll, takeBack, setTile })
   align-items: center;
   font-weight: bold;
   user-select: none;
-  position: relative;
+  position: relative
 }
 
 .points {
   position: absolute;
   bottom: 2px;
   right: 2px;
-  font-size: 0.6rem;
-  font-weight: normal;
+  font-size: .6rem;
+  font-weight: normal
 }
 
 .TW {
   background: linear-gradient(to bottom right, #CB514E, #A94442);
-  color: #fff;
+  color: #fff
 }
 
 .DW,
 .CENTER {
   background: linear-gradient(to bottom right, #C18AB3, #9C6F9E);
-  color: #fff;
+  color: #fff
 }
 
 .TL {
   background: linear-gradient(to bottom right, #87B5D2, #5C8EAB);
-  color: #fff;
+  color: #fff
 }
 
 .DL {
   background: linear-gradient(to bottom right, #90caf9, #5a9bdc);
-  color: #fff;
+  color: #fff
 }
 
 .use {
   background: linear-gradient(to bottom right, #EBBF56, #D6A63B);
-  color: #000;
+  color: #000
 }
 </style>

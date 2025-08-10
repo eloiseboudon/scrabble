@@ -144,31 +144,21 @@
           currentGame.value = game
           view.value = 'game'
           await Vue.nextTick()
-          const res = await fetch(
-            `http://localhost:8000/games/${game.id}?player_id=${game.player_id}`
-          )
+          const res = await fetch(`http://localhost:8000/games/${game.id}?player_id=${game.player_id}`)
           const data = await res.json()
+
           rack.value = data.rack
           placements.value = []
           result.value = ''
           score.value = data.scores[game.player_id] || 0
           const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
           score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
-          if (gameRef.value?.gridRef?.value) {
-            data.tiles.forEach(t =>
-              gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter)
-            )
-          } else {
-            const stop = Vue.watch(
-              () => gameRef.value?.gridRef?.value,
-              grid => {
-                if (grid) {
-                  data.tiles.forEach(t => grid.setTile(t.row, t.col, t.letter))
-                  stop()
-                }
-              }
-            )
-          }
+
+          view.value = 'game'
+          await Vue.nextTick() // assure que <Game> et <Grid> sont montés
+
+          // ✅ API propre exposée par Game.vue
+          data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
         }
 
         async function finishGame() {
@@ -231,7 +221,7 @@
         }
 
         function clearMove() {
-          gameRef.value.gridRef.value.clearAll(placements.value)
+          gameRef.value.clearAll(placements.value)
           placements.value.forEach(p => rack.value.push(p.letter))
           placements.value = []
         }
@@ -266,7 +256,7 @@
           placements.value = []
           if (data.bot_move) {
             data.bot_move.forEach(([row, col, letter]) => {
-              gameRef.value.gridRef.value.setTile(row, col, letter)
+              gameRef.value.setTile(row, col, letter)
             })
           }
           const stateRes = await fetch(
