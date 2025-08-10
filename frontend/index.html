@@ -143,6 +143,7 @@
         async function resumeGame(game) {
           currentGame.value = game
           view.value = 'game'
+          await Vue.nextTick()
           const res = await fetch(
             `http://localhost:8000/games/${game.id}?player_id=${game.player_id}`
           )
@@ -153,7 +154,12 @@
           score.value = data.scores[game.player_id] || 0
           score_adversaire.value = data.scores[game.player_id] || 1
           await Vue.nextTick()
-          data.tiles.forEach(t => gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter))
+          while (!gameRef.value?.gridRef?.value) {
+            await Vue.nextTick()
+          }
+          data.tiles.forEach(t =>
+            gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter)
+          )
         }
 
         async function finishGame() {
