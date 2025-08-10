@@ -13,7 +13,7 @@
       </div>
     </div>
     <div class="validation">
-      <p class="score">Score : {{ score }}</p>
+      <div class="score">Score <br> Toi : {{ score }} <br> Adversaire : {{ score_adversaire }}</div>
       <button @click="$emit('clear')"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
           stroke-width="1.5" stroke="currentColor" class="size-6">
           <path stroke-linecap="round" stroke-linejoin="round"
@@ -38,7 +38,6 @@
             d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
         </svg>
         Valider le coup</button>
-      <p>{{ result }}</p>
     </div>
   </div>
 </template>
@@ -51,7 +50,8 @@ defineProps({
   rack: { type: Array, default: () => [] },
   result: { type: String, default: '' },
   letterPoints: { type: Object, default: () => ({}) },
-  score: { type: Number, default: 0 }
+  score: { type: Number, default: 0 },
+  score_adversaire: { type: Number, default: 0 }
 })
 
 defineEmits([

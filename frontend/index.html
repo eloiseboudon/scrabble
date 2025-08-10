@@ -47,6 +47,7 @@
         const placements = Vue.ref([])
         const result = Vue.ref('')
         const score = Vue.ref(0)
+        const score_adversaire = Vue.ref(0)
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
 
@@ -92,6 +93,7 @@
           placements.value = []
           result.value = ''
           score.value = 0
+          score_adversaire.value = 0
           const game = { id: game_id, player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -131,6 +133,7 @@
           placements.value = []
           result.value = ''
           score.value = 0
+          score_adversaire.value = 0
           const game = { id: game_id, player_id }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -148,6 +151,7 @@
           placements.value = []
           result.value = ''
           score.value = data.scores[game.player_id] || 0
+          score_adversaire.value = data.scores[game.player_id] || 1
           await Vue.nextTick()
           data.tiles.forEach(t => gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter))
         }
@@ -220,7 +224,7 @@
         function shuffleRack() {
           for (let i = rack.value.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1))
-            ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
+              ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
           }
         }
 
@@ -256,6 +260,7 @@
           const stateData = await stateRes.json()
           rack.value = stateData.rack
           score.value = stateData.scores[currentGame.value.player_id] || 0
+          score_adversaire.value = stateData.scores[currentGame.value.player_id] || 1
         }
 
         function passTurn() {
@@ -291,7 +296,8 @@
           passTurn,
           moved,
           onAuth,
-          score
+          score,
+          score_adversaire
         }
       },
       template: `
@@ -308,6 +314,7 @@
                 :rack="rack"
                 :result="result"
                 :score="score"
+                :score_adversaire="score_adversaire"
                 :letter-points="LETTER_POINTS"
                 @home="goHome"
                 @finish="finishGame"
