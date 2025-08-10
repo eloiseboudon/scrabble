@@ -1,4 +1,4 @@
-/* ===== PALETTE 1: JAUNE-BLEU ORIGINAL (ACTIVE) ===== 
+/* ===== PALETTE 1: JAUNE-BLEU ORIGINAL (ACTIVE) ===== */
 :root {
   --color-primary: linear-gradient(135deg, #F1D87A, #E6CC5A);
   --color-secondary: linear-gradient(135deg, #deb317, #B8961A);
@@ -12,6 +12,7 @@
 }
 
 /* ===== PALETTE 2: OCÉAN MODERNE ===== */
+/*
 :root {
   --color-primary: linear-gradient(135deg, #67e8f9, #06b6d4);
   --color-secondary: linear-gradient(135deg, #0891b2, #0e7490);
@@ -23,7 +24,7 @@
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
 }
-
+*/
 
 /* ===== PALETTE 3: COUCHER DE SOLEIL =====
 :root {
@@ -80,6 +81,11 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+
+  /* Variables pour la grille Scrabble */
+  --cell-size: clamp(20px, 4.5vw, 32px);
+  --grid-gap: 0;
+  --grid-border-width: clamp(1px, 0.2vw, 2px);
 }
 
 * {
@@ -198,7 +204,8 @@ button:active,
   align-items: center;
   gap: var(--spacing-md);
   margin-top: var(--spacing-xl);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  /* Pas de retour à la ligne */
   padding: var(--spacing-md);
   background: rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-lg);
@@ -213,8 +220,8 @@ button:active,
   box-shadow: 0 2px 8px var(--color-shadow);
   min-width: 120px;
   text-align: center;
-  order: -1;
-  /* Score toujours en premier */
+  flex-shrink: 0;
+  /* Ne se compresse pas */
 }
 
 .validation button {
@@ -239,17 +246,7 @@ button:active,
   max-width: 800px;
 }
 
-.scrabble-grid {
-  margin: var(--spacing-lg) auto;
-  padding: var(--spacing-md);
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: var(--radius-lg);
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
-  display: flex;
-  justify-content: center;
-  max-width: fit-content;
-}
-
+/* ===== RACK DES TUILES ===== */
 .rack {
   display: flex;
   gap: var(--spacing-sm);
@@ -259,7 +256,7 @@ button:active,
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   margin: var(--spacing-lg) auto 0;
-  max-width: fit-content;
+  max-width: 100%;
   flex-wrap: wrap;
 }
 
@@ -292,7 +289,7 @@ button:active,
   transform: rotate(5deg) scale(1.1);
 }
 
-.points {
+.tile .points {
   position: absolute;
   bottom: 2px;
   right: 3px;
@@ -415,8 +412,14 @@ li a:focus {
   justify-content: center;
 }
 
-/* Responsive amélioré */
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
+  :root {
+    --cell-size: clamp(18px, 5.5vw, 28px);
+    --grid-gap: 0;
+    --grid-border-width: 1px;
+  }
+
   body {
     padding: var(--spacing-sm);
   }
@@ -437,10 +440,36 @@ li a:focus {
     padding: var(--spacing-md);
   }
 
-  /* La validation reste en ligne même sur mobile */
+  /* Grille 100% width sur mobile */
+  .scrabble-grid-container {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  /* Rack responsive */
+  .rack {
+    padding: var(--spacing-md);
+    gap: var(--spacing-xs);
+    margin: var(--spacing-md) auto 0;
+  }
+
+  .tile {
+    width: clamp(25px, 8vw, 35px);
+    height: clamp(25px, 8vw, 35px);
+    font-size: clamp(0.7rem, 2.5vw, 0.9rem);
+  }
+
+  .tile .points {
+    width: clamp(8px, 2.5vw, 12px);
+    height: clamp(8px, 2.5vw, 12px);
+    font-size: clamp(0.4rem, 1.5vw, 0.6rem);
+  }
+
+  /* Validation reste en ligne sur tablette */
   .validation {
     gap: var(--spacing-sm);
     padding: var(--spacing-sm);
+    flex-wrap: nowrap;
   }
 
   .validation .score {
@@ -454,50 +483,85 @@ li a:focus {
     padding: var(--spacing-sm) var(--spacing-md);
     font-size: 0.8rem;
   }
-
-  .tile {
-    width: 30px;
-    height: 30px;
-    font-size: 0.8rem;
-  }
-
-  .points {
-    width: 10px;
-    height: 10px;
-    font-size: 0.5rem;
-  }
-
-  .rack {
-    padding: var(--spacing-md);
-    gap: var(--spacing-xs);
-  }
-
-  .scrabble-grid {
-    margin: var(--spacing-md) auto;
-    padding: var(--spacing-sm);
-  }
 }
 
-/* Responsive pour très petits écrans */
+/* Responsive pour mobiles - GRILLE 100% WIDTH + BOUTONS EN LIGNE */
 @media (max-width: 480px) {
-  .validation {
-    flex-direction: column;
+  :root {
+    --cell-size: calc((100vw - 1rem) / 15);
+    /* Grille prend vraiment toute la largeur */
+    --grid-gap: 0;
+    --grid-border-width: 0px;
+  }
+
+  body {
+    padding: 0;
+  }
+
+  #app {
     gap: var(--spacing-sm);
+    padding: 0;
+    margin: 0;
+  }
+
+  .game {
+    border-radius: 0;
+    padding: var(--spacing-sm);
+    margin: 0;
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  /* Grille 100% width sur téléphone - SANS BORDURES */
+  .scrabble-grid-container {
+    width: 100vw;
+    max-width: 100vw;
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .tile {
+    width: clamp(20px, 6vw, 28px);
+    height: clamp(20px, 6vw, 28px);
+    font-size: clamp(0.6rem, 1.8vw, 0.8rem);
+  }
+
+  /* VALIDATION - TOUT SUR UNE LIGNE */
+  .validation {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: var(--spacing-xs);
+    padding: var(--spacing-xs);
+    margin: var(--spacing-sm) 0;
+    justify-content: space-between;
   }
 
   .validation .score {
-    order: 0;
-    width: 100%;
+    min-width: 60px;
+    padding: var(--spacing-xs);
+    font-size: 0.7rem;
+    flex-shrink: 0;
   }
 
   .validation button {
+    min-width: 50px;
+    padding: var(--spacing-xs);
+    font-size: 0.6rem;
     flex: 1;
-    min-width: unset;
+  }
+
+  .rack {
+    margin: var(--spacing-sm) 0;
+    padding: var(--spacing-sm);
   }
 
   .nav {
     flex-direction: column;
     align-items: center;
+    padding: 0 var(--spacing-sm);
   }
 
   button,
@@ -525,9 +589,63 @@ li a:focus {
   animation: fadeIn 0.6s ease-out;
 }
 
+/* Animation pour les nouvelles lettres posées */
+@keyframes letterPlace {
+  0% {
+    transform: scale(0) rotate(180deg);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2) rotate(0deg);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
 /* Focus pour l'accessibilité */
 button:focus,
 .nav a:focus {
   outline: 2px solid var(--color-title);
   outline-offset: 2px;
+}
+
+/* Classes utilitaires */
+.text-center {
+  text-align: center;
+}
+
+.mt-auto {
+  margin-top: auto;
+}
+
+.mb-auto {
+  margin-bottom: auto;
+}
+
+.mx-auto {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Responsive helpers */
+.hidden-mobile {
+  display: block;
+}
+
+.hidden-desktop {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .hidden-mobile {
+    display: none;
+  }
+
+  .hidden-desktop {
+    display: block;
+  }
 }
