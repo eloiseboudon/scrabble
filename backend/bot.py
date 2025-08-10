@@ -13,7 +13,6 @@ from typing import Dict, List, Optional, Set, Tuple
 
 from . import game
 
-
 # ---------------------------------------------------------------------------
 # Constants and helpers
 # ---------------------------------------------------------------------------
@@ -75,7 +74,9 @@ class Board:
 
     def __init__(self, cells: Optional[List[List[Cell]]] = None) -> None:
         if cells is None:
-            self.cells = [[Cell() for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+            self.cells = [
+                [Cell() for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)
+            ]
             self.cells[7][7].is_center = True
         else:
             self.cells = cells
@@ -168,8 +169,12 @@ def build_full_vertical(board: Board, r: int, c: int, ch_mid: str) -> str:
     return "".join(letters)
 
 
-def compute_cross_checks(board: Board, trie: Trie, vertical_scan: bool) -> List[List[Set[str]]]:
-    cross: List[List[Set[str]]] = [[set(ALPHABET) for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+def compute_cross_checks(
+    board: Board, trie: Trie, vertical_scan: bool
+) -> List[List[Set[str]]]:
+    cross: List[List[Set[str]]] = [
+        [set(ALPHABET) for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)
+    ]
     for r in range(BOARD_SIZE):
         for c in range(BOARD_SIZE):
             if board.get(r, c).letter:
@@ -198,7 +203,9 @@ def compute_cross_checks(board: Board, trie: Trie, vertical_scan: bool) -> List[
     return cross
 
 
-def find_anchors_in_row(board: Board, r: int, first_move: bool) -> List[Tuple[int, int]]:
+def find_anchors_in_row(
+    board: Board, r: int, first_move: bool
+) -> List[Tuple[int, int]]:
     anchors: List[Tuple[int, int]] = []
     row = board.row_as_cells(r)
     for c in range(BOARD_SIZE):
@@ -237,7 +244,9 @@ def score_move(board: Board, move: Move) -> int:
             cc -= 1
         word_mult = 1
         word_score = 0
-        while cc < BOARD_SIZE and (board.get(r0, cc).letter or (r0, cc) in letters_used_positions):
+        while cc < BOARD_SIZE and (
+            board.get(r0, cc).letter or (r0, cc) in letters_used_positions
+        ):
             if (r0, cc) in letters_used_positions:
                 ch = next(x[2] for x in move.letters if x[0] == r0 and x[1] == cc)
                 is_blank = next(x[3] for x in move.letters if x[0] == r0 and x[1] == cc)
@@ -251,20 +260,23 @@ def score_move(board: Board, move: Move) -> int:
             cc += 1
         total += word_score * word_mult
 
-        for (rr, cc, ch, is_blank) in move.letters:
+        for rr, cc, ch, is_blank in move.letters:
             up = rr - 1
             down = rr + 1
-            if (
-                (board.in_bounds(up, cc) and board.get(up, cc).letter)
-                or (board.in_bounds(down, cc) and board.get(down, cc).letter)
+            if (board.in_bounds(up, cc) and board.get(up, cc).letter) or (
+                board.in_bounds(down, cc) and board.get(down, cc).letter
             ):
                 r_up = rr
                 while r_up > 0 and board.get(r_up - 1, cc).letter:
                     r_up -= 1
                 word_mult = board.get(rr, cc).word_mult
-                word_score = (0 if is_blank else LETTER_SCORES.get(ch, 0)) * board.get(rr, cc).letter_mult
+                word_score = (0 if is_blank else LETTER_SCORES.get(ch, 0)) * board.get(
+                    rr, cc
+                ).letter_mult
                 r_scan = r_up
-                while r_scan < BOARD_SIZE and (r_scan == rr or board.get(r_scan, cc).letter):
+                while r_scan < BOARD_SIZE and (
+                    r_scan == rr or board.get(r_scan, cc).letter
+                ):
                     if r_scan != rr:
                         ch2 = board.get(r_scan, cc).letter
                         word_score += LETTER_SCORES.get(ch2, 0)
@@ -276,7 +288,9 @@ def score_move(board: Board, move: Move) -> int:
             rr -= 1
         word_mult = 1
         word_score = 0
-        while rr < BOARD_SIZE and (board.get(rr, c0).letter or (rr, c0) in letters_used_positions):
+        while rr < BOARD_SIZE and (
+            board.get(rr, c0).letter or (rr, c0) in letters_used_positions
+        ):
             if (rr, c0) in letters_used_positions:
                 ch = next(x[2] for x in move.letters if x[0] == rr and x[1] == c0)
                 is_blank = next(x[3] for x in move.letters if x[0] == rr and x[1] == c0)
@@ -290,20 +304,23 @@ def score_move(board: Board, move: Move) -> int:
             rr += 1
         total += word_score * word_mult
 
-        for (rr, cc, ch, is_blank) in move.letters:
+        for rr, cc, ch, is_blank in move.letters:
             left = cc - 1
             right = cc + 1
-            if (
-                (board.in_bounds(rr, left) and board.get(rr, left).letter)
-                or (board.in_bounds(rr, right) and board.get(rr, right).letter)
+            if (board.in_bounds(rr, left) and board.get(rr, left).letter) or (
+                board.in_bounds(rr, right) and board.get(rr, right).letter
             ):
                 c_left = cc
                 while c_left > 0 and board.get(rr, c_left - 1).letter:
                     c_left -= 1
                 word_mult = board.get(rr, cc).word_mult
-                word_score = (0 if is_blank else LETTER_SCORES.get(ch, 0)) * board.get(rr, cc).letter_mult
+                word_score = (0 if is_blank else LETTER_SCORES.get(ch, 0)) * board.get(
+                    rr, cc
+                ).letter_mult
                 c_scan = c_left
-                while c_scan < BOARD_SIZE and (c_scan == cc or board.get(rr, c_scan).letter):
+                while c_scan < BOARD_SIZE and (
+                    c_scan == cc or board.get(rr, c_scan).letter
+                ):
                     if c_scan != cc:
                         ch2 = board.get(rr, c_scan).letter
                         word_score += LETTER_SCORES.get(ch2, 0)
@@ -325,9 +342,16 @@ def build_move_from_state(
 ) -> Optional[Move]:
     if not placed:
         return None
-    if (row, anchor_col) not in {(r, c) for (r, c, _, _) in placed} and not board.get(row, anchor_col).letter:
+    if (row, anchor_col) not in {(r, c) for (r, c, _, _) in placed} and not board.get(
+        row, anchor_col
+    ).letter:
         return None
-    tmp_board = Board([[Cell(letter=board.get(r, c).letter) for c in range(BOARD_SIZE)] for r in range(BOARD_SIZE)])
+    tmp_board = Board(
+        [
+            [Cell(letter=board.get(r, c).letter) for c in range(BOARD_SIZE)]
+            for r in range(BOARD_SIZE)
+        ]
+    )
     for r, c, ch, _ in placed:
         tmp_board.get(r, c).letter = ch
     if not vertical:
@@ -348,13 +372,22 @@ def build_move_from_state(
         letters = []
         rr = r
         used = {(r, c) for (r, c, _, _) in placed}
-        while rr < BOARD_SIZE and (tmp_board.get(rr, anchor_col).letter or (rr, anchor_col) in used):
+        while rr < BOARD_SIZE and (
+            tmp_board.get(rr, anchor_col).letter or (rr, anchor_col) in used
+        ):
             letters.append(tmp_board.get(rr, anchor_col).letter)
             rr += 1
         main_word = "".join(letters)
     if not trie.has_word(main_word):
         return None
-    mv = Move(row=row, col=anchor_col, vertical=vertical, letters=placed.copy(), main_word=main_word, score=0)
+    mv = Move(
+        row=row,
+        col=anchor_col,
+        vertical=vertical,
+        letters=placed.copy(),
+        main_word=main_word,
+        score=0,
+    )
     mv.score = score_move(board, mv)
     return mv
 
@@ -370,7 +403,13 @@ def dfs_left(
     moves: List[Move],
     vertical: bool,
 ):
-    def extend_left(node: TrieNode, col: int, left_left: int, placed: List[Tuple[int, int, str, bool]], used_from_rack: bool) -> None:
+    def extend_left(
+        node: TrieNode,
+        col: int,
+        left_left: int,
+        placed: List[Tuple[int, int, str, bool]],
+        used_from_rack: bool,
+    ) -> None:
         extend_right(node, anchor_col, placed, used_from_rack)
         if left_left == 0:
             return
@@ -381,7 +420,10 @@ def dfs_left(
         if cell.letter:
             node2 = trie.step(node, cell.letter)
             if node2:
-                extend_left(node2, next_col, left_left - 1, [(row, next_col, cell.letter, False)] + placed, used_from_rack)
+                # Existing letters to the left extend the prefix but do not
+                # belong to the placement list since the bot does not place
+                # tiles on already occupied cells.
+                extend_left(node2, next_col, left_left - 1, placed, used_from_rack)
             return
         for ch in letters_available(rack):
             if ch not in cross[row][next_col]:
@@ -396,11 +438,22 @@ def dfs_left(
             old_rack = dict(rack)
             rack.clear()
             rack.update(new_rack)
-            extend_left(node2, next_col, left_left - 1, [(row, next_col, ch, used_blank)] + placed, True)
+            extend_left(
+                node2,
+                next_col,
+                left_left - 1,
+                [(row, next_col, ch, used_blank)] + placed,
+                True,
+            )
             rack.clear()
             rack.update(old_rack)
 
-    def extend_right(node: TrieNode, col: int, placed: List[Tuple[int, int, str, bool]], used_from_rack: bool) -> None:
+    def extend_right(
+        node: TrieNode,
+        col: int,
+        placed: List[Tuple[int, int, str, bool]],
+        used_from_rack: bool,
+    ) -> None:
         c = col
         made_progress = False
         while c < BOARD_SIZE:
@@ -428,7 +481,9 @@ def dfs_left(
                 placed.append((row, c, ch, used_blank))
                 made_progress = True
                 if node2.is_word and used_from_rack:
-                    mv = build_move_from_state(board, row, anchor_col, placed, vertical, trie)
+                    mv = build_move_from_state(
+                        board, row, anchor_col, placed, vertical, trie
+                    )
                     if mv:
                         moves.append(mv)
                 extend_right(node2, c + 1, placed, True)
@@ -453,7 +508,17 @@ def generate_moves(board: Board, rack: Dict[str, int], trie: Trie) -> List[Move]
         anchors = find_anchors_in_row(board, r, first_move)
         for anchor_col, left_limit in anchors:
             extra = 1 if anchor_col > 0 and board.get(r, anchor_col - 1).letter else 0
-            dfs_left(board, trie, rack, r, anchor_col, left_limit + extra, cross_h, moves, vertical=False)
+            dfs_left(
+                board,
+                trie,
+                rack,
+                r,
+                anchor_col,
+                left_limit + extra,
+                cross_h,
+                moves,
+                vertical=False,
+            )
 
     t_board = board.transpose()
     cross_v = compute_cross_checks(t_board, trie, vertical_scan=False)
@@ -462,10 +527,31 @@ def generate_moves(board: Board, rack: Dict[str, int], trie: Trie) -> List[Move]
         for anchor_col, left_limit in anchors:
             tmp: List[Move] = []
             extra = 1 if anchor_col > 0 and t_board.get(r, anchor_col - 1).letter else 0
-            dfs_left(t_board, trie, rack, r, anchor_col, left_limit + extra, cross_v, tmp, vertical=False)
+            dfs_left(
+                t_board,
+                trie,
+                rack,
+                r,
+                anchor_col,
+                left_limit + extra,
+                cross_v,
+                tmp,
+                vertical=False,
+            )
             for mv in tmp:
-                new_letters = [(c, r_, ch, is_blank) for (r_, c, ch, is_blank) in mv.letters]
-                moves.append(Move(row=mv.col, col=mv.row, vertical=True, letters=new_letters, main_word=mv.main_word, score=mv.score))
+                new_letters = [
+                    (c, r_, ch, is_blank) for (r_, c, ch, is_blank) in mv.letters
+                ]
+                moves.append(
+                    Move(
+                        row=mv.col,
+                        col=mv.row,
+                        vertical=True,
+                        letters=new_letters,
+                        main_word=mv.main_word,
+                        score=mv.score,
+                    )
+                )
     for mv in moves:
         mv.score = score_move(board, mv)
     return moves
@@ -502,9 +588,16 @@ def _build_trie() -> Trie:
     return trie
 
 
-def bot_turn(board: List[List[Optional[str]]], rack: List[str]) -> Tuple[List[Tuple[int, int, str, bool]], int]:
+def bot_turn(
+    board: List[List[Optional[str]]], rack: List[str]
+) -> Tuple[List[Tuple[int, int, str, bool]], int]:
     trie = _build_trie()
-    board_obj = Board([[Cell(letter=board[r][c]) for c in range(BOARD_SIZE)] for r in range(BOARD_SIZE)])
+    board_obj = Board(
+        [
+            [Cell(letter=board[r][c]) for c in range(BOARD_SIZE)]
+            for r in range(BOARD_SIZE)
+        ]
+    )
     rack_counts: Dict[str, int] = {}
     for ch in rack:
         rack_counts[ch.upper()] = rack_counts.get(ch.upper(), 0) + 1
@@ -522,7 +615,12 @@ def is_valid_placement(
     direction: str,
 ) -> Tuple[bool, int, List[Tuple[int, int, str]]]:
     trie = _build_trie()
-    board_before = Board([[Cell(letter=board[r][c]) for c in range(BOARD_SIZE)] for r in range(BOARD_SIZE)])
+    board_before = Board(
+        [
+            [Cell(letter=board[r][c]) for c in range(BOARD_SIZE)]
+            for r in range(BOARD_SIZE)
+        ]
+    )
     placements: List[Tuple[int, int, str, bool]] = []
     word = word.upper()
     for i, ch in enumerate(word):
@@ -540,7 +638,12 @@ def is_valid_placement(
     if not placements:
         return False, 0, []
 
-    board_after = Board([[Cell(letter=board[r][c]) for c in range(BOARD_SIZE)] for r in range(BOARD_SIZE)])
+    board_after = Board(
+        [
+            [Cell(letter=board[r][c]) for c in range(BOARD_SIZE)]
+            for r in range(BOARD_SIZE)
+        ]
+    )
     for r, c, ch, _ in placements:
         board_after.get(r, c).letter = ch
 
@@ -572,18 +675,27 @@ def is_valid_placement(
             return False, 0, []
 
     if direction == "across":
-        main_word = build_full_horizontal(board_after, row, col, board_after.get(row, col).letter)
+        main_word = build_full_horizontal(
+            board_after, row, col, board_after.get(row, col).letter
+        )
     else:
-        main_word = build_full_vertical(board_after, row, col, board_after.get(row, col).letter)
+        main_word = build_full_vertical(
+            board_after, row, col, board_after.get(row, col).letter
+        )
     if not trie.has_word(main_word):
         return False, 0, []
 
-    move = Move(row=row, col=col, vertical=(direction == "down"), letters=placements, main_word=main_word, score=0)
+    move = Move(
+        row=row,
+        col=col,
+        vertical=(direction == "down"),
+        letters=placements,
+        main_word=main_word,
+        score=0,
+    )
     score = score_move(board_before, move)
     placements_simple = [(r, c, ch) for (r, c, ch, _blank) in placements]
     return True, score, placements_simple
 
 
 __all__ = ["bot_turn", "is_valid_placement", "BOARD_SIZE", "DICTIONARY"]
-
-
