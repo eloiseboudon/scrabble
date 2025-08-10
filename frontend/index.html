@@ -152,14 +152,22 @@
           placements.value = []
           result.value = ''
           score.value = data.scores[game.player_id] || 0
-          score_adversaire.value = data.scores[game.player_id] || 1
-          await Vue.nextTick()
-          while (!gameRef.value?.gridRef?.value) {
-            await Vue.nextTick()
+          score_adversaire.value = data.scores[game.player_id] || 0
+          if (gameRef.value?.gridRef?.value) {
+            data.tiles.forEach(t =>
+              gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter)
+            )
+          } else {
+            const stop = Vue.watch(
+              () => gameRef.value?.gridRef?.value,
+              grid => {
+                if (grid) {
+                  data.tiles.forEach(t => grid.setTile(t.row, t.col, t.letter))
+                  stop()
+                }
+              }
+            )
           }
-          data.tiles.forEach(t =>
-            gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter)
-          )
         }
 
         async function finishGame() {
@@ -266,7 +274,7 @@
           const stateData = await stateRes.json()
           rack.value = stateData.rack
           score.value = stateData.scores[currentGame.value.player_id] || 0
-          score_adversaire.value = stateData.scores[currentGame.value.player_id] || 1
+          score_adversaire.value = stateData.scores[currentGame.value.player_id] || 0
         }
 
         function passTurn() {
