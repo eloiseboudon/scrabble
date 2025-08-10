@@ -39,7 +39,7 @@ def upgrade() -> None:
         'placed_tiles',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('game_id', sa.Integer(), sa.ForeignKey('games.id'), nullable=False),
-        sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
+        sa.Column('player_id', sa.Integer(), sa.ForeignKey('game_players.id'), nullable=False),
         sa.Column('x', sa.Integer(), nullable=False),
         sa.Column('y', sa.Integer(), nullable=False),
         sa.Column('letter', sa.String(length=1), nullable=False),
@@ -48,7 +48,7 @@ def upgrade() -> None:
         'words',
         sa.Column('id', sa.Integer(), primary_key=True),
         sa.Column('game_id', sa.Integer(), sa.ForeignKey('games.id'), nullable=False),
-        sa.Column('user_id', sa.Integer(), sa.ForeignKey('users.id'), nullable=False),
+        sa.Column('player_id', sa.Integer(), sa.ForeignKey('game_players.id'), nullable=False),
         sa.Column('word', sa.String(), nullable=False),
         sa.Column('score', sa.Integer(), nullable=False),
     )

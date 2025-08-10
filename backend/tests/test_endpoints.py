@@ -11,6 +11,7 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from backend.database import Base, SessionLocal, engine  # type: ignore
+from backend import models
 from fastapi import HTTPException
 from backend.main import (
     AuthRequest,
@@ -66,6 +67,11 @@ def test_game_lifecycle() -> None:
             "score"
         ]
     assert score == 12
+
+    with SessionLocal() as db:
+        tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
+    assert len(tiles) == 3
+    assert all(t.player_id == p1 for t in tiles)
 
     with SessionLocal() as db:
         state = get_game_state(game_id, player_id=p1, db=db)

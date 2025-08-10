@@ -327,7 +327,7 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     for p in req.placements:
         tile = models.PlacedTile(
             game_id=game_id,
-            user_id=req.player_id,
+            player_id=req.player_id,
             x=p.row,
             y=p.col,
             letter=p.letter.upper(),
@@ -369,7 +369,7 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
                 for r, c, letter, blank in bot_move:
                     tile = models.PlacedTile(
                         game_id=game_id,
-                        user_id=bot_player.id,
+                        player_id=bot_player.id,
                         x=r,
                         y=c,
                         letter=letter.upper(),
