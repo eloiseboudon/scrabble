@@ -181,7 +181,8 @@ def is_valid_placement(
     """
     # Make a copy of the board to simulate the move
     temp_board = [row[:] for row in board]
-    placements = []
+    placements: List[Tuple[int, int, str]] = []
+    board_has_letters = any(any(cell for cell in r) for r in board)
     
     # Check if the word fits on the board
     word_len = len(word)
@@ -206,13 +207,14 @@ def is_valid_placement(
                 if 0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and temp_board[nr][nc]:
                     has_adjacent = True
                     break
-            
+
             # If not adjacent to any existing letters and not the first move, it's invalid
-            if not has_adjacent and any(any(cell for cell in row) for row in temp_board):
+            if not has_adjacent and board_has_letters:
                 return False, 0, []
-            
-            # Add to placements
+
+            # Add to placements and update board copy
             placements.append((r, c, word[i]))
+            temp_board[r][c] = word[i]
         else:
             # If the position is not empty, the existing letter must match our word
             if temp_board[r][c] != word[i]:
@@ -223,17 +225,44 @@ def is_valid_placement(
         return False, 0, []
     
     # Check if the word connects to existing words
-    if any(any(cell for cell in row) for row in temp_board):
+    if board_has_letters:
         connected = False
         for r, c, _ in placements:
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 nr, nc = r + dr, c + dc
-                if 0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and temp_board[nr][nc]:
+                if 0 <= nr < BOARD_SIZE and 0 <= nc < BOARD_SIZE and board[nr][nc]:
                     connected = True
                     break
             if connected:
                 break
         if not connected:
+            return False, 0, []
+
+    # Validate cross words formed by new placements
+    for r, c, _ in placements:
+        if direction == 'across':
+            # vertical cross word
+            word_cross = temp_board[r][c]
+            rr = r - 1
+            while rr >= 0 and temp_board[rr][c]:
+                word_cross = temp_board[rr][c] + word_cross
+                rr -= 1
+            rr = r + 1
+            while rr < BOARD_SIZE and temp_board[rr][c]:
+                word_cross += temp_board[rr][c]
+                rr += 1
+        else:
+            # horizontal cross word
+            word_cross = temp_board[r][c]
+            cc = c - 1
+            while cc >= 0 and temp_board[r][cc]:
+                word_cross = temp_board[r][cc] + word_cross
+                cc -= 1
+            cc = c + 1
+            while cc < BOARD_SIZE and temp_board[r][cc]:
+                word_cross += temp_board[r][cc]
+                cc += 1
+        if len(word_cross) > 1 and word_cross.upper() not in DICTIONARY:
             return False, 0, []
     
     # Calculate score (simplified version, can be enhanced with bonus squares)
