@@ -14,6 +14,10 @@ from .game import DICTIONARY, draw_tiles, load_game_state, place_tiles, reset_ga
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(
+    level=logging.INFO,  # ou DEBUG
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 app = FastAPI()
 
 app.add_middleware(
