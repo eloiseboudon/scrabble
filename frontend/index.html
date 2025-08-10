@@ -152,7 +152,8 @@
           placements.value = []
           result.value = ''
           score.value = data.scores[game.player_id] || 0
-          score_adversaire.value = data.scores[game.player_id] || 0
+          const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
+          score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
           if (gameRef.value?.gridRef?.value) {
             data.tiles.forEach(t =>
               gameRef.value.gridRef.value.setTile(t.row, t.col, t.letter)
@@ -274,7 +275,8 @@
           const stateData = await stateRes.json()
           rack.value = stateData.rack
           score.value = stateData.scores[currentGame.value.player_id] || 0
-          score_adversaire.value = stateData.scores[currentGame.value.player_id] || 0
+          const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+          score_adversaire.value = advId ? stateData.scores[advId] : 0
         }
 
         function passTurn() {
