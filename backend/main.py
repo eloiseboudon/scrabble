@@ -5,11 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 import hashlib
+import logging
 import random
 
 from . import game as game_module, models
 from .database import get_db
 from .game import DICTIONARY, draw_tiles, load_game_state, place_tiles, reset_game
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -127,47 +130,94 @@ def _maybe_play_bot(
 
     Returns updated players list, the bot move if any, and the bot score.
     """
+    logger.info(
+        "Checking bot move for game %s: next=%s vs_computer=%s",
+        game_id,
+        game.next_player_id,
+        game.vs_computer,
+    )
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     bot_move: list[tuple[int, int, str, bool]] | None = None
     bot_score = 0
-    if game.vs_computer:
-        bot_player = next((p for p in players if p.is_computer), None)
-        if bot_player and game.next_player_id == bot_player.id:
-            move = game_module.bot_turn(list(bot_player.rack))
-            if move:
-                move_tiles, _ = move
-                if move_tiles:
-                    try:
-                        bot_score = place_tiles(move_tiles)
-                    except ValueError:
-                        move_tiles = []
-                if move_tiles:
-                    bot_move = move_tiles
-                    rack_bot = list(bot_player.rack)
-                    for r, c, letter, blank in bot_move:
-                        tile = models.PlacedTile(
-                            game_id=game_id,
-                            player_id=bot_player.id,
-                            x=r,
-                            y=c,
-                            letter=letter.upper(),
-                        )
-                        db.add(tile)
-                        ltr = "?" if blank else letter.upper()
-                        if ltr in rack_bot:
-                            rack_bot.remove(ltr)
-                    drawn_bot = draw_tiles(7 - len(rack_bot))
-                    rack_bot.extend(drawn_bot)
-                    bot_player.rack = "".join(rack_bot)
-                    bot_player.score += bot_score
-                    players_sorted = sorted(players, key=lambda pl: pl.id)
-                    idx_bot = next(
-                        i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id
-                    )
-                    game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
-                    game.passes_in_a_row = 0
-                    db.commit()
-                    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    if not game.vs_computer:
+        logger.debug("Game %s is not against a computer", game_id)
+        return players, bot_move, bot_score
+
+    bot_player = next((p for p in players if p.is_computer), None)
+    if not bot_player:
+        logger.warning("Game %s marked vs_computer but no bot player found", game_id)
+        return players, bot_move, bot_score
+
+    if game.next_player_id != bot_player.id:
+        logger.debug(
+            "Game %s bot player id %s but next player is %s",
+            game_id,
+            bot_player.id,
+            game.next_player_id,
+        )
+        return players, bot_move, bot_score
+
+    # Ensure in-memory board matches persisted state before generating a move
+    tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
+    load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
+
+    logger.info("Game %s bot %s attempting move", game_id, bot_player.id)
+    move = game_module.bot_turn(list(bot_player.rack))
+    logger.debug("Game %s bot_turn result: %s", game_id, move)
+    if not move:
+        logger.info("Game %s bot could not find a move", game_id)
+        return players, bot_move, bot_score
+
+    move_tiles, _ = move
+    if move_tiles:
+        try:
+            bot_score = place_tiles(move_tiles)
+            logger.info(
+                "Game %s bot placed tiles %s scoring %s",
+                game_id,
+                move_tiles,
+                bot_score,
+            )
+        except ValueError as exc:
+            logger.warning(
+                "Game %s bot produced invalid move %s: %s",
+                game_id,
+                move_tiles,
+                exc,
+            )
+            move_tiles = []
+    if not move_tiles:
+        logger.info("Game %s bot has no valid move", game_id)
+        return players, bot_move, bot_score
+
+    bot_move = move_tiles
+    rack_bot = list(bot_player.rack)
+    for r, c, letter, blank in bot_move:
+        tile = models.PlacedTile(
+            game_id=game_id,
+            player_id=bot_player.id,
+            x=r,
+            y=c,
+            letter=letter.upper(),
+        )
+        db.add(tile)
+        ltr = "?" if blank else letter.upper()
+        if ltr in rack_bot:
+            rack_bot.remove(ltr)
+    drawn_bot = draw_tiles(7 - len(rack_bot))
+    rack_bot.extend(drawn_bot)
+    bot_player.rack = "".join(rack_bot)
+    bot_player.score += bot_score
+    players_sorted = sorted(players, key=lambda pl: pl.id)
+    idx_bot = next(i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id)
+    game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
+    game.passes_in_a_row = 0
+    db.commit()
+    logger.info(
+        "Game %s bot move committed, next player %s", game_id, game.next_player_id
+    )
+    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
     return players, bot_move, bot_score
 
 
