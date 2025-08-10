@@ -47,12 +47,6 @@ class StartRequest(BaseModel):
     vs_computer: bool = False
 
 
-class PlayRequest(BaseModel):
-    game_id: int
-    user_id: int
-    placements: list[Placement]
-
-
 class CreateGameRequest(BaseModel):
     max_players: int = 2
     vs_computer: bool = False
@@ -253,43 +247,6 @@ def draw(n: int, player_id: int, db: Session = Depends(get_db)) -> dict[str, lis
     player.rack += "".join(letters)
     db.commit()
     return {"letters": letters}
-
-
-@app.post("/play")
-def play(req: PlayRequest, db: Session = Depends(get_db)) -> dict[str, int]:
-    """Place tiles on the board, persist them and return the score."""
-    try:
-        score = place_tiles(
-            [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
-        )
-    except ValueError as exc:  # pragma: no cover - simple passthrough
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    for p in req.placements:
-        tile = models.PlacedTile(
-            game_id=req.game_id,
-            user_id=req.user_id,
-            x=p.row,
-            y=p.col,
-            letter=p.letter.upper(),
-        )
-        db.add(tile)
-
-    player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=req.game_id, user_id=req.user_id)
-        .first()
-    )
-    if player is None:
-        raise HTTPException(status_code=404, detail="Player not found")
-    rack_list = list(player.rack)
-    for p in req.placements:
-        letter = "?" if p.blank else p.letter.upper()
-        if letter in rack_list:
-            rack_list.remove(letter)
-    player.rack = "".join(rack_list)
-    db.commit()
-    return {"score": score}
 
 
 @app.post("/games")
