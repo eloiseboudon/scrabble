@@ -5,7 +5,11 @@ valid moves, find the best word placements, and make intelligent decisions durin
 """
 
 from typing import List, Tuple, Optional, Set
-from .game import BOARD_SIZE, DICTIONARY, BAG, LETTER_DISTRIBUTION
+from . import game
+
+BOARD_SIZE = game.BOARD_SIZE
+DICTIONARY = game.DICTIONARY
+LETTER_DISTRIBUTION = game.LETTER_DISTRIBUTION
 
 # Points par lettre
 LETTER_POINTS = {letter: points for letter, (_, points) in LETTER_DISTRIBUTION.items()}
@@ -290,7 +294,7 @@ def generate_best_move(board: List[List[str]], rack: List[str]) -> Tuple[List[Tu
                     ]
     
     # If no valid move found, try to exchange tiles if possible
-    if best_score == -1 and len(BAG) >= len(rack):
+    if best_score == -1 and len(game.bag) >= len(rack):
         # Return empty placements to indicate a pass/exchange
         return [], 0
     

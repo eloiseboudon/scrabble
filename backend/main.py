@@ -47,12 +47,6 @@ class StartRequest(BaseModel):
     vs_computer: bool = False
 
 
-class PlayRequest(BaseModel):
-    game_id: int
-    user_id: int
-    placements: list[Placement]
-
-
 class CreateGameRequest(BaseModel):
     max_players: int = 2
     vs_computer: bool = False
@@ -255,43 +249,6 @@ def draw(n: int, player_id: int, db: Session = Depends(get_db)) -> dict[str, lis
     return {"letters": letters}
 
 
-@app.post("/play")
-def play(req: PlayRequest, db: Session = Depends(get_db)) -> dict[str, int]:
-    """Place tiles on the board, persist them and return the score."""
-    try:
-        score = place_tiles(
-            [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
-        )
-    except ValueError as exc:  # pragma: no cover - simple passthrough
-        raise HTTPException(status_code=400, detail=str(exc))
-
-    for p in req.placements:
-        tile = models.PlacedTile(
-            game_id=req.game_id,
-            user_id=req.user_id,
-            x=p.row,
-            y=p.col,
-            letter=p.letter.upper(),
-        )
-        db.add(tile)
-
-    player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=req.game_id, user_id=req.user_id)
-        .first()
-    )
-    if player is None:
-        raise HTTPException(status_code=404, detail="Player not found")
-    rack_list = list(player.rack)
-    for p in req.placements:
-        letter = "?" if p.blank else p.letter.upper()
-        if letter in rack_list:
-            rack_list.remove(letter)
-    player.rack = "".join(rack_list)
-    db.commit()
-    return {"score": score}
-
-
 @app.post("/games")
 def create_game(req: CreateGameRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     """Create a new game and return its identifier."""
@@ -370,7 +327,7 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     for p in req.placements:
         tile = models.PlacedTile(
             game_id=game_id,
-            user_id=req.player_id,
+            player_id=req.player_id,
             x=p.row,
             y=p.col,
             letter=p.letter.upper(),
@@ -394,8 +351,49 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     game.passes_in_a_row = 0
     db.commit()
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
+    bot_move: list[tuple[int, int, str, bool]] | None = None
+    bot_score = 0
+    if game.vs_computer:
+        bot_player = next((p for p in players if p.is_computer), None)
+        if bot_player and game.next_player_id == bot_player.id:
+            move = game_module.bot_turn(list(bot_player.rack))
+            if move:
+                bot_move, _ = move
+                try:
+                    bot_score = place_tiles(bot_move)
+                except ValueError:
+                    bot_move = []
+                    bot_score = 0
+                rack_bot = list(bot_player.rack)
+                for r, c, letter, blank in bot_move:
+                    tile = models.PlacedTile(
+                        game_id=game_id,
+                        player_id=bot_player.id,
+                        x=r,
+                        y=c,
+                        letter=letter.upper(),
+                    )
+                    db.add(tile)
+                    ltr = "?" if blank else letter.upper()
+                    if ltr in rack_bot:
+                        rack_bot.remove(ltr)
+                drawn_bot = draw_tiles(7 - len(rack_bot))
+                rack_bot.extend(drawn_bot)
+                bot_player.rack = "".join(rack_bot)
+                bot_player.score += bot_score
+                players_sorted = sorted(players, key=lambda pl: pl.id)
+                idx_bot = next(i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id)
+                game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
+                game.passes_in_a_row = 0
+                db.commit()
+                players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
     state = _state_response(game, players)
     state["score"] = score
+    if bot_move is not None:
+        state["bot_move"] = bot_move
+        state["bot_score"] = bot_score
     return state
 
 

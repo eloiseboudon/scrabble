@@ -68,12 +68,13 @@ class PlacedTile(Base):
 
     id = Column(Integer, primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    player_id = Column(Integer, ForeignKey("game_players.id"), nullable=False)
     x = Column(Integer, nullable=False)
     y = Column(Integer, nullable=False)
     letter = Column(String(1), nullable=False)
 
     game = relationship("Game", back_populates="tiles")
+    player = relationship("GamePlayer")
 
 
 class Word(Base):
@@ -81,8 +82,9 @@ class Word(Base):
 
     id = Column(Integer, primary_key=True)
     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    player_id = Column(Integer, ForeignKey("game_players.id"), nullable=False)
     word = Column(String, nullable=False)
     score = Column(Integer, nullable=False)
 
     game = relationship("Game", back_populates="words")
+    player = relationship("GamePlayer")

@@ -6,9 +6,6 @@ from pathlib import Path
 import random
 from typing import Iterable, List, Tuple, Optional
 
-# Import bot logic
-from . import bot
-
 BOARD_SIZE = 15
 
 # ---------------------------------------------------------------------------
@@ -315,12 +312,10 @@ def bot_turn(rack: List[str]) -> Optional[Tuple[List[Tuple[int, int, str, bool]]
         - score: Score of the move (0 for pass/exchange)
         If no valid move is possible, returns None.
     """
-    # Get the current board state
-    board = BOARD
-    
-    # Let the bot decide the best move
     try:
-        return bot.bot_turn(board, rack)
+        from . import bot as bot_module
+
+        return bot_module.bot_turn(board, rack)
     except Exception as e:
         print(f"Error in bot_turn: {e}")
         return None
