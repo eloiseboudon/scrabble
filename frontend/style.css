@@ -80,6 +80,8 @@
   --radius-md: 12px;
   --radius-lg: 16px;
   --radius-xl: 20px;
+  --tile-size: 35px;
+  --cell-size: 30px;
 }
 
 * {
@@ -265,8 +267,8 @@ button:active,
 
 /* Tuiles sans bordures, effet plus doux */
 .tile {
-  width: 35px;
-  height: 35px;
+  width: var(--tile-size);
+  height: var(--tile-size);
   background: var(--color-primary);
   border-radius: var(--radius-sm);
   display: flex;
@@ -417,6 +419,10 @@ li a:focus {
 
 /* Responsive amélioré */
 @media (max-width: 768px) {
+  :root {
+    --tile-size: 30px;
+    --cell-size: 24px;
+  }
   body {
     padding: var(--spacing-sm);
   }
@@ -456,8 +462,6 @@ li a:focus {
   }
 
   .tile {
-    width: 30px;
-    height: 30px;
     font-size: 0.8rem;
   }
 
@@ -480,6 +484,10 @@ li a:focus {
 
 /* Responsive pour très petits écrans */
 @media (max-width: 480px) {
+  :root {
+    --tile-size: 26px;
+    --cell-size: 20px;
+  }
   .validation {
     flex-direction: column;
     gap: var(--spacing-sm);

@@ -102,26 +102,28 @@ defineExpose({ clearAll, takeBack, setTile })
 </script>
 
 <style scoped>
-.scrabble-grid {
-  display: grid;
-  grid-template-rows: repeat(15, 30px);
-  grid-template-columns: repeat(15, 30px);
-  border: 1px solid #ccc
-}
+  .scrabble-grid {
+    display: grid;
+    grid-template-rows: repeat(15, var(--cell-size));
+    grid-template-columns: repeat(15, var(--cell-size));
+    border: 1px solid #ccc;
+  }
 
 .row {
   display: contents
 }
 
-.cell {
-  border: 1px solid #ccc;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-weight: bold;
-  user-select: none;
-  position: relative
-}
+  .cell {
+    width: var(--cell-size);
+    height: var(--cell-size);
+    border: 1px solid #ccc;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-weight: bold;
+    user-select: none;
+    position: relative;
+  }
 
 .points {
   position: absolute;
