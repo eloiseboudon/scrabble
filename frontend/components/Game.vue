@@ -18,9 +18,8 @@
 
     <div class="validation">
       <div class="score">
-        Score <br>
-        Toi : {{ score }} <br>
-        Adversaire : {{ score_adversaire }}
+        Toi {{ score }} <br>
+        Adversaire {{ score_adversaire }}
       </div>
 
       <button @click="$emit('clear')">
@@ -29,15 +28,15 @@
       </button>
       <button @click="$emit('shuffle')">
         <!-- icône -->
-        Échanger
+        Mélanger
       </button>
-      <button @click="$emit('pass')">
+      <button v-if="tile" @click="$emit('play')">
+        <!-- icône -->
+        Jouer
+      </button>
+      <button v-if="!tile" @click="$emit('pass')">
         <!-- icône -->
         Passer
-      </button>
-      <button @click="$emit('play')">
-        <!-- icône -->
-        Valider le coup
       </button>
     </div>
   </div>

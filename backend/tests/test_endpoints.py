@@ -80,6 +80,25 @@ def test_game_lifecycle() -> None:
     assert len(state.tiles) == 3
 
 
+def test_blank_tile_scores_zero() -> None:
+    game_id, p1, _p2, rack1 = _setup_game()
+    # ensure player has a blank
+    with SessionLocal() as db:
+        player = db.query(models.GamePlayer).filter_by(id=p1).one()
+        player.rack = "?" + player.rack[1:]
+        db.commit()
+    placements = [
+        {"row": 7, "col": 7, "letter": "H", "blank": True},
+        {"row": 7, "col": 8, "letter": "O", "blank": False},
+        {"row": 7, "col": 9, "letter": "U", "blank": False},
+    ]
+    with SessionLocal() as db:
+        score = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)[
+            "score"
+        ]
+    assert score == 4
+
+
 def test_exchange_pass_resign() -> None:
     game_id, p1, p2, rack1 = _setup_game()
     letter = rack1[0]
