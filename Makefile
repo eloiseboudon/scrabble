@@ -28,5 +28,12 @@ upgrade:
 test: install
 	@$(PYTHON) -m pytest backend/tests -q && echo "All tests passed" || (echo "\nTests failed. See output above." && exit 1)
 
+clean-db:
+	psql -U eloise -d scrabble -c "DELETE FROM placed_tiles; DELETE FROM words; DELETE FROM game_players; DELETE FROM games;DELETE from users;"
+	echo "\nPensez à vider les sessions locales pour user_id"
+
 clean:
 	rm -rf .venv
+
+clean-branches:
+	git branch | grep -v -E "(main|dev|\*)" | xargs git branch -d
