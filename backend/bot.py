@@ -534,6 +534,7 @@ def is_valid_placement(
         if cell.letter:
             if cell.letter != ch:
                 return False, 0, []
+
         else:
             placements.append((r, c, ch, False))
     if not placements:
@@ -548,11 +549,13 @@ def is_valid_placement(
         if not board_after.get(7, 7).letter:
             return False, 0, []
     else:
+
         connected = False
         for r, c, _, _ in placements:
             for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
                 rr, cc = r + dr, c + dc
                 if board_before.in_bounds(rr, cc) and board_before.get(rr, cc).letter:
+
                     connected = True
                     break
             if connected:
@@ -582,4 +585,5 @@ def is_valid_placement(
 
 
 __all__ = ["bot_turn", "is_valid_placement", "BOARD_SIZE", "DICTIONARY"]
+
 

@@ -217,6 +217,7 @@ def _maybe_play_bot(
         "Game %s bot move committed, next player %s", game_id, game.next_player_id
     )
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+
     return players, bot_move, bot_score
 
 
