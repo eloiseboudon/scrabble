@@ -183,7 +183,7 @@ def _score_word(coords: List[Tuple[int, int]], new_tiles: Iterable[Tuple[int, in
     score = 0
     for r, c in coords:
         letter = board[r][c]
-        letter_score = LETTER_POINTS.get(letter.upper(), 0)
+        letter_score = 0 if letter.islower() else LETTER_POINTS.get(letter.upper(), 0)
         if (r, c) in new_set:
             bonus = BONUS[r][c]
             if bonus == "DL":

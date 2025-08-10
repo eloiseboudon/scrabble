@@ -202,7 +202,7 @@ def _maybe_play_bot(
             player_id=bot_player.id,
             x=r,
             y=c,
-            letter=letter.upper(),
+            letter=letter.lower() if blank else letter.upper(),
         )
         db.add(tile)
         ltr = "?" if blank else letter.upper()
@@ -435,7 +435,7 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
             player_id=req.player_id,
             x=p.row,
             y=p.col,
-            letter=p.letter.upper(),
+            letter=p.letter.lower() if p.blank else p.letter.upper(),
         )
         db.add(tile)
     player = db.get(models.GamePlayer, req.player_id)

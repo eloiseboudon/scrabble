@@ -196,33 +196,52 @@
             if (!letter) return
             const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
             if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
-            rack.value.splice(idx, 0, letter)
+            rack.value.splice(idx, 0, letter === letter.toLowerCase() ? '?' : letter)
           }
         }
 
         function placed(payload) {
           rack.value.splice(payload.index, 1)
-          placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter })
+          if (payload.letter === '?') {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            let choice = prompt(`Choisissez une lettre pour le joker:\n${letters}`)
+            if (!choice) {
+              rack.value.splice(payload.index, 0, '?')
+              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+              return
+            }
+            choice = choice.toUpperCase()
+            if (!letters.includes(choice)) {
+              rack.value.splice(payload.index, 0, '?')
+              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+              return
+            }
+            gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase())
+            placements.value.push({ row: payload.row, col: payload.col, letter: choice, blank: true })
+          } else {
+            placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter, blank: false })
+          }
         }
 
         function removed(payload) {
           const { row, col, letter } = payload
           const i = placements.value.findIndex(p => p.row === row && p.col === col)
           if (i !== -1) placements.value.splice(i, 1)
-          rack.value.push(letter)
+          rack.value.push(letter === letter.toLowerCase() ? '?' : letter)
         }
 
         function moved(payload) {
-          const { fromRow, fromCol, toRow, toCol, letter } = payload
+          const { fromRow, fromCol, toRow, toCol } = payload
           const i = placements.value.findIndex(p => p.row === fromRow && p.col === fromCol)
           if (i !== -1) {
-            placements.value[i] = { row: toRow, col: toCol, letter }
+            placements.value[i].row = toRow
+            placements.value[i].col = toCol
           }
         }
 
         function clearMove() {
           gameRef.value.clearAll(placements.value)
-          placements.value.forEach(p => rack.value.push(p.letter))
+          placements.value.forEach(p => rack.value.push(p.blank ? '?' : p.letter))
           placements.value = []
         }
 
@@ -255,8 +274,8 @@
           result.value = `Score : ${data.score}`
           placements.value = []
           if (data.bot_move) {
-            data.bot_move.forEach(([row, col, letter]) => {
-              gameRef.value.setTile(row, col, letter)
+            data.bot_move.forEach(([row, col, letter, blank]) => {
+              gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
             })
           }
           const stateRes = await fetch(

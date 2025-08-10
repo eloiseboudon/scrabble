@@ -5,8 +5,8 @@
         @dragover.prevent @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
         :draggable="!!cell" @dragstart="onDragStart($event, rowIndex, colIndex)">
         <template v-if="cell">
-          <span class="letter">{{ cell }}</span>
-          <span class="points">{{ letterPoints[cell] }}</span>
+          <span class="letter">{{ cell.toUpperCase() }}</span>
+          <span class="points">{{ cell === cell.toLowerCase() ? 0 : letterPoints[cell.toUpperCase()] }}</span>
         </template>
         <template v-else>
           {{ label(board[rowIndex][colIndex]) }}
