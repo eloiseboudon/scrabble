@@ -73,3 +73,23 @@ def test_invalid_bot_move_keeps_turn():
             res = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)
     assert "bot_move" not in res
     assert res["next_player_id"] == bot_id
+
+
+def test_state_fetch_triggers_pending_bot_move():
+    game_id, p1, bot_id, rack1 = _setup_bot_game()
+    placements = [
+        {"row": 7, "col": 7, "letter": rack1[1], "blank": False},
+        {"row": 7, "col": 8, "letter": rack1[3], "blank": False},
+        {"row": 7, "col": 9, "letter": rack1[2], "blank": False},
+    ]
+    with patch("backend.main.game_module.bot_turn", return_value=None):
+        with SessionLocal() as db:
+            res = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)
+    assert res["next_player_id"] == bot_id
+    with patch(
+        "backend.main.game_module.bot_turn", return_value=([(7, 10, "A", False)], 1)
+    ), patch("backend.main.place_tiles", return_value=1):
+        with SessionLocal() as db:
+            state = get_game_state(game_id, player_id=p1, db=db)
+    assert state.next_player_id == p1
+    assert any(t.row == 7 and t.col == 10 for t in state.tiles)
