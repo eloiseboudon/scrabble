@@ -1,15 +1,20 @@
 """FastAPI backend for Scrabble application."""
 
+import hashlib
+import logging
+import random
+
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-import hashlib
-import random
 
-from . import game as game_module, models
+from . import game as game_module
+from . import models
 from .database import get_db
 from .game import DICTIONARY, draw_tiles, load_game_state, place_tiles, reset_game
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -109,7 +114,9 @@ class GameState(BaseModel):
     phase: str
 
 
-def _state_response(game: models.Game, players: list[models.GamePlayer]) -> dict[str, object]:
+def _state_response(
+    game: models.Game, players: list[models.GamePlayer]
+) -> dict[str, object]:
     """Build a state dictionary with common game fields."""
     return {
         "next_player_id": game.next_player_id if game.next_player_id is not None else 0,
@@ -127,58 +134,102 @@ def _maybe_play_bot(
 
     Returns updated players list, the bot move if any, and the bot score.
     """
+    logger.info(
+        "Checking bot move for game %s: next=%s vs_computer=%s",
+        game_id,
+        game.next_player_id,
+        game.vs_computer,
+    )
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     bot_move: list[tuple[int, int, str, bool]] | None = None
     bot_score = 0
-    if game.vs_computer:
-        bot_player = next((p for p in players if p.is_computer), None)
-        if bot_player and game.next_player_id == bot_player.id:
-            move = game_module.bot_turn(list(bot_player.rack))
-            if move:
-                move_tiles, _ = move
-                if move_tiles:
-                    try:
-                        bot_score = place_tiles(move_tiles)
-                    except ValueError:
-                        move_tiles = []
-                if move_tiles:
-                    bot_move = move_tiles
-                    rack_bot = list(bot_player.rack)
-                    for r, c, letter, blank in bot_move:
-                        tile = models.PlacedTile(
-                            game_id=game_id,
-                            player_id=bot_player.id,
-                            x=r,
-                            y=c,
-                            letter=letter.upper(),
-                        )
-                        db.add(tile)
-                        ltr = "?" if blank else letter.upper()
-                        if ltr in rack_bot:
-                            rack_bot.remove(ltr)
-                    drawn_bot = draw_tiles(7 - len(rack_bot))
-                    rack_bot.extend(drawn_bot)
-                    bot_player.rack = "".join(rack_bot)
-                    bot_player.score += bot_score
-                    players_sorted = sorted(players, key=lambda pl: pl.id)
-                    idx_bot = next(
-                        i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id
-                    )
-                    game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
-                    game.passes_in_a_row = 0
-                    db.commit()
-                    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    if not game.vs_computer:
+        logger.debug("Game %s is not against a computer", game_id)
+        return players, bot_move, bot_score
+
+    bot_player = next((p for p in players if p.is_computer), None)
+    if not bot_player:
+        logger.warning("Game %s marked vs_computer but no bot player found", game_id)
+        return players, bot_move, bot_score
+
+    if game.next_player_id != bot_player.id:
+        logger.debug(
+            "Game %s bot player id %s but next player is %s",
+            game_id,
+            bot_player.id,
+            game.next_player_id,
+        )
+        return players, bot_move, bot_score
+
+    logger.info("Game %s bot %s attempting move", game_id, bot_player.id)
+    move = game_module.bot_turn(list(bot_player.rack))
+    logger.debug("Game %s bot_turn result: %s", game_id, move)
+    if not move:
+        logger.info("Game %s bot could not find a move", game_id)
+        return players, bot_move, bot_score
+
+    move_tiles, _ = move
+    if move_tiles:
+        try:
+            bot_score = place_tiles(move_tiles)
+            logger.info(
+                "Game %s bot placed tiles %s scoring %s",
+                game_id,
+                move_tiles,
+                bot_score,
+            )
+        except ValueError as exc:
+            logger.warning(
+                "Game %s bot produced invalid move %s: %s",
+                game_id,
+                move_tiles,
+                exc,
+            )
+            move_tiles = []
+    if not move_tiles:
+        logger.info("Game %s bot has no valid move", game_id)
+        return players, bot_move, bot_score
+
+    bot_move = move_tiles
+    rack_bot = list(bot_player.rack)
+    for r, c, letter, blank in bot_move:
+        tile = models.PlacedTile(
+            game_id=game_id,
+            player_id=bot_player.id,
+            x=r,
+            y=c,
+            letter=letter.upper(),
+        )
+        db.add(tile)
+        ltr = "?" if blank else letter.upper()
+        if ltr in rack_bot:
+            rack_bot.remove(ltr)
+    drawn_bot = draw_tiles(7 - len(rack_bot))
+    rack_bot.extend(drawn_bot)
+    bot_player.rack = "".join(rack_bot)
+    bot_player.score += bot_score
+    players_sorted = sorted(players, key=lambda pl: pl.id)
+    idx_bot = next(i for i, pl in enumerate(players_sorted) if pl.id == bot_player.id)
+    game.next_player_id = players_sorted[(idx_bot + 1) % len(players_sorted)].id
+    game.passes_in_a_row = 0
+    db.commit()
+    logger.info(
+        "Game %s bot move committed, next player %s", game_id, game.next_player_id
+    )
+    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     return players, bot_move, bot_score
 
 
 class AuthRequest(BaseModel):
     """Request model for user authentication."""
+
     username: str
     password: str
 
 
 class UserLookupResponse(BaseModel):
     """Response model for user lookup by username."""
+
     user_id: int
 
 
@@ -220,7 +271,9 @@ def get_user_by_username(
 
 
 @app.post("/start")
-def start(req: StartRequest, db: Session = Depends(get_db)) -> dict[str, int | list[str]]:
+def start(
+    req: StartRequest, db: Session = Depends(get_db)
+) -> dict[str, int | list[str]]:
     """Start a new game and return identifiers and an initial rack."""
     reset_game()
     game = models.Game(max_players=req.max_players, vs_computer=req.vs_computer)
@@ -274,9 +327,7 @@ def get_game(game_id: int, player_id: int, db: Session = Depends(get_db)) -> Gam
         raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=game_id, id=player_id)
-        .first()
+        db.query(models.GamePlayer).filter_by(game_id=game_id, id=player_id).first()
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -301,7 +352,9 @@ def draw(n: int, player_id: int, db: Session = Depends(get_db)) -> dict[str, lis
 
 
 @app.post("/games")
-def create_game(req: CreateGameRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+def create_game(
+    req: CreateGameRequest, db: Session = Depends(get_db)
+) -> dict[str, int]:
     """Create a new game and return its identifier."""
     game = models.Game(max_players=req.max_players, vs_computer=req.vs_computer)
     db.add(game)
@@ -310,7 +363,9 @@ def create_game(req: CreateGameRequest, db: Session = Depends(get_db)) -> dict[s
 
 
 @app.post("/games/{game_id}/join")
-def join_game(game_id: int, req: JoinGameRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+def join_game(
+    game_id: int, req: JoinGameRequest, db: Session = Depends(get_db)
+) -> dict[str, int]:
     """Join an existing game and return the created player identifier."""
     game = db.get(models.Game, game_id)
     if game is None:
@@ -361,7 +416,9 @@ def start_game(
 
 
 @app.post("/games/{game_id}/play")
-def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> dict[str, object]:
+def play_move(
+    game_id: int, req: MoveRequest, db: Session = Depends(get_db)
+) -> dict[str, object]:
     """Play a move in the specified game and return updated state."""
     game = db.get(models.Game, game_id)
     if game is None:
@@ -372,7 +429,9 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     try:
-        score = place_tiles([(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements])
+        score = place_tiles(
+            [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
+        )
     except ValueError as exc:  # pragma: no cover - validation passthrough
         raise HTTPException(status_code=400, detail=str(exc))
     for p in req.placements:
@@ -475,9 +534,7 @@ def get_game_state(
         raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=game_id, id=player_id)
-        .first()
+        db.query(models.GamePlayer).filter_by(game_id=game_id, id=player_id).first()
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -493,4 +550,3 @@ def get_game_state(
         passes_in_a_row=state["passes_in_a_row"],
         phase=state["phase"],
     )
-
