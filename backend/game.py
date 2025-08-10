@@ -1,10 +1,13 @@
-from __future__ import annotations
-
 """Core game logic for Scrabble rules."""
+
+from __future__ import annotations
 
 from pathlib import Path
 import random
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Tuple, Optional
+
+# Import bot logic
+from . import bot
 
 BOARD_SIZE = 15
 
@@ -292,3 +295,46 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
         total_score += 50
 
     return total_score
+
+
+def bot_turn(rack: List[str]) -> Optional[Tuple[List[Tuple[int, int, str, bool]], int]]:
+    """Make a move for the bot.
+    
+    Args:
+        rack: List of letters in the bot's rack
+        
+    Returns:
+        Tuple of (placements, score) where:
+        - placements: List of (row, col, letter, is_blank) tuples for each letter to place
+        - score: Score of the move (0 for pass/exchange)
+        If no valid move is possible, returns None.
+    """
+    # Get the current board state
+    board = BOARD
+    
+    # Let the bot decide the best move
+    try:
+        return bot.bot_turn(board, rack)
+    except Exception as e:
+        print(f"Error in bot_turn: {e}")
+        return None
+
+def generate_valid_moves(board, rack, dictionary):
+    """Generate all valid moves for the given rack and board state.
+    
+    Args:
+        board: 2D list representing the current game board
+        rack: List of letters in the player's rack
+        dictionary: Set of valid words
+        
+    Returns:
+        List of valid moves, where each move is a tuple of (placements, score)
+    """
+    # This is a placeholder implementation.
+    # In a real implementation, you would generate all possible valid moves
+    # by trying to place the rack letters on the board in all possible positions
+    # and checking if they form valid words.
+    
+    # For now, we'll return an empty list to indicate no valid moves found
+    # The bot will handle this case by passing or exchanging tiles
+    return []
