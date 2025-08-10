@@ -157,6 +157,10 @@ def _maybe_play_bot(
         )
         return players, bot_move, bot_score
 
+    # Ensure in-memory board matches persisted state before generating a move
+    tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
+    load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
+
     logger.info("Game %s bot %s attempting move", game_id, bot_player.id)
     move = game_module.bot_turn(list(bot_player.rack))
     logger.debug("Game %s bot_turn result: %s", game_id, move)

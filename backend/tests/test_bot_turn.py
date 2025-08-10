@@ -18,7 +18,9 @@ from backend.main import (
     play_move,
     start_game,
     get_game_state,
+    _maybe_play_bot,
 )  # type: ignore
+from backend import models  # type: ignore
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -93,3 +95,44 @@ def test_state_fetch_triggers_pending_bot_move():
             state = get_game_state(game_id, player_id=p1, db=db)
     assert state.next_player_id == p1
     assert any(t.row == 7 and t.col == 10 for t in state.tiles)
+
+
+def test_bot_reloads_board_before_playing():
+    """Bot should rebuild board state from the database before playing.
+
+    This simulates a scenario where the in-memory board is cleared (e.g. after a
+    server restart) before the bot attempts its move.
+    """
+    game_id, p1, bot_id, rack1 = _setup_bot_game()
+    placements = [
+        {"row": 7, "col": 7, "letter": rack1[1], "blank": False},
+        {"row": 7, "col": 8, "letter": rack1[3], "blank": False},
+        {"row": 7, "col": 9, "letter": rack1[2], "blank": False},
+    ]
+
+    def no_bot(game_id: int, game, db):
+        players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+        return players, None, 0
+
+    with patch("backend.main._maybe_play_bot", side_effect=no_bot):
+        with SessionLocal() as db:
+            play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)
+
+    from backend import game as game_module
+
+    # Clear the in-memory board to mimic a fresh process
+    game_module.reset_game()
+
+    def fake_bot_turn(rack):
+        # Board should be reloaded with the player's move before bot_turn is called
+        assert game_module.board[7][7] is not None
+        return ([(7, 10, "A", False)], 1)
+
+    with patch("backend.main.game_module.bot_turn", side_effect=fake_bot_turn), patch(
+        "backend.main.place_tiles", return_value=1
+    ):
+        with SessionLocal() as db:
+            game = db.get(models.Game, game_id)
+            _players, bot_move, _score = _maybe_play_bot(game_id, game, db)
+
+    assert bot_move == [(7, 10, "A", False)]
