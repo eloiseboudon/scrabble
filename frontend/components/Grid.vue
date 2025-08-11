@@ -6,6 +6,7 @@
           :class="[board[rowIndex][colIndex], { 'has-letter': !!cell }]" @dragover.prevent
           @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
           :draggable="!!cell && !locked[rowIndex][colIndex]" @dragstart="onDragStart($event, rowIndex, colIndex)"
+          @touchend.prevent="onTouchEnd(rowIndex, colIndex)" @touchmove.prevent
           :data-row="rowIndex" :data-col="colIndex">
           <template v-if="cell">
             <span class="letter">{{ cell.toUpperCase() }}</span>
@@ -104,6 +105,24 @@ function onDragStart(e, row, col) {
   const letter = grid.value[row][col]
   if (!letter || locked.value[row][col]) return
   e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'board', row, col, letter }))
+}
+
+function onTouchEnd(row, col) {
+  const data = typeof window !== 'undefined' ? window.touchDragData : null
+  if (!data || grid.value[row][col]) return
+  if (data.source === 'rack' && data.letter) {
+    grid.value[row][col] = data.letter
+    locked.value[row][col] = false
+    emit('placed', {
+      row,
+      col,
+      letter: data.letter,
+      from: 'rack',
+      rackIndex: data.index,
+      ...(data.letter === '*' ? { blank: true } : {})
+    })
+  }
+  if (typeof window !== 'undefined') window.touchDragData = null
 }
 
 function takeBack(row, col) {

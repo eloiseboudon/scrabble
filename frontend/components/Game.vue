@@ -10,7 +10,8 @@
 
     <div class="rack" @dragover.prevent @drop="$emit('rack-drop', $event, rack.length)">
       <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
-        @dragstart="$emit('drag-start', $event, idx)" @dragover.prevent @drop="$emit('rack-drop', $event, idx)">
+        @dragstart="$emit('drag-start', $event, idx)" @dragover.prevent @drop="$emit('rack-drop', $event, idx)"
+        @touchstart.prevent="onTouchStart(idx)">
         <span class="letter">{{ letter }}</span>
         <span class="points">{{ letterPoints[letter] }}</span>
       </div>
@@ -40,7 +41,7 @@
 import { ref } from 'vue'
 import Grid from './Grid.vue'
 
-defineProps({
+const props = defineProps({
   rack: { type: Array, default: () => [] },
   result: { type: String, default: '' },
   letterPoints: { type: Object, default: () => ({}) },
@@ -64,6 +65,13 @@ function handlePlaced(payload) {
 function handleRemoved(payload) {
   if (placements.value > 0) placements.value--
   emit('removed', payload)
+}
+
+function onTouchStart(idx) {
+  // Store drag data globally so Grid can access it on touch devices
+  if (typeof window !== 'undefined') {
+    window.touchDragData = { source: 'rack', index: idx, letter: props.rack[idx] }
+  }
 }
 
 // ✅ Expose des wrappers stables

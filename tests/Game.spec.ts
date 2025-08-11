@@ -77,6 +77,16 @@ describe('Game.vue', () => {
         expect(args![1]).toBe(0) // (event, idx)
     })
 
+    it('permits placing a tile with touch events', async () => {
+        const w = mount(Game, { props: { rack: ['A'], letterPoints: { A: 1 } } })
+        const tile = w.find('.rack .tile')
+        await tile.trigger('touchstart')
+        const center = w.find('.CENTER')
+        await center.trigger('touchend')
+        const placed = w.emitted('placed')?.[0]?.[0]
+        expect(placed).toEqual({ row: 7, col: 7, letter: 'A', from: 'rack', rackIndex: 0 })
+    })
+
     it('drop sur une case du rack émet "rack-drop" avec l’index cible', async () => {
         const w = mount(Game, { props: { rack: ['A', 'B', 'C'], letterPoints: { A: 1, B: 3, C: 3 } } })
         const t1 = w.findAll('.rack .tile')[1]
