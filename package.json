@@ -1,0 +1,28 @@
+{
+  "name": "scrabble",
+  "version": "1.0.0",
+  "description": "This project provides a minimal Scrabble setup:",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "vue": "^3.4.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.41.1",
+    "@testing-library/vue": "^7.0.0",
+    "@vitejs/plugin-vue": "^4.3.1",
+    "@vitest/ui": "^0.34.4",
+    "@vue/test-utils": "^2.4.1",
+    "jsdom": "^22.1.0",
+    "msw": "^2.2.1",
+    "vitest": "^0.34.4"
+  }
+}
