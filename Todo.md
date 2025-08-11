@@ -6,7 +6,7 @@
 
 🆗 Init frontend avec Vue 3 + Vite
 
- Setup BDD PostgreSQL locale avec ORM (SQLAlchemy) ou Prisma (si besoin d’un layer JS)
+🆗 Setup BDD PostgreSQL locale avec ORM (SQLAlchemy) ou Prisma (si besoin d’un layer JS)
 
  Dockeriser l’ensemble pour développement simplifié
 
@@ -30,7 +30,7 @@
 
 🆗 Endpoint is_valid_word(word: str) dans le backend
 
-✅ 4. Création du système utilisateur
+🔹 4. Création du système utilisateur
 🎯 MVP 2 : Authentification
 
  Auth backend avec FastAPI Users (ou maison) + JWT
