@@ -5,8 +5,8 @@
         <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell"
           :class="[board[rowIndex][colIndex], { 'has-letter': !!cell }]" @dragover.prevent
           @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
-          :draggable="!!cell && !locked[rowIndex][colIndex]"
-          @dragstart="onDragStart($event, rowIndex, colIndex)">
+          :draggable="!!cell && !locked[rowIndex][colIndex]" @dragstart="onDragStart($event, rowIndex, colIndex)"
+          :data-row="rowIndex" :data-col="colIndex">
           <template v-if="cell">
             <span class="letter">{{ cell.toUpperCase() }}</span>
             <span class="points">{{ cell === cell.toLowerCase() ? 0 : letterPoints[cell.toUpperCase()] }}</span>
@@ -61,7 +61,14 @@ function onDrop(e, row, col) {
     if (data.source === 'rack' && data.letter) {
       grid.value[row][col] = data.letter
       locked.value[row][col] = false
-      emit('placed', { index: data.index, row, col, letter: data.letter })
+      emit('placed', {
+        row,
+        col,
+        letter: data.letter,
+        from: 'rack',
+        rackIndex: data.index,
+        ...(data.letter === '*' ? { blank: true } : {})
+      })
     } else if (data.source === 'board') {
       if (locked.value[data.row][data.col]) return
       const letter = grid.value[data.row][data.col]
@@ -70,7 +77,7 @@ function onDrop(e, row, col) {
       locked.value[data.row][data.col] = false
       grid.value[row][col] = letter
       locked.value[row][col] = false
-      emit('moved', { fromRow: data.row, fromCol: data.col, toRow: row, toCol: col, letter })
+      emit('moved', { from: { row: data.row, col: data.col }, to: { row, col }, letter })
     }
   } catch { }
 }
@@ -197,18 +204,18 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   font-weight: 700;
   font-size: clamp(10px, 2.2vw, 16px);
   color: #333;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8); */
 }
 
 .points {
   position: absolute;
-  bottom: clamp(1px, 0.3vw, 3px);
-  right: clamp(1px, 0.3vw, 3px);
+  bottom: 0px;
+  right: 0px;
   font-size: clamp(5px, 1vw, 8px);
   font-weight: 600;
-  color: #555;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
+  color: #444;
+  /* background: rgba(255, 255, 255, 0.8); */
+  /* border-radius: 50%; */
   width: clamp(8px, 1.8vw, 12px);
   height: clamp(8px, 1.8vw, 12px);
   display: flex;
@@ -219,7 +226,7 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
 
 /* Labels des cases spéciales */
 .label {
-  font-size: clamp(6px, 1.4vw, 10px);
+  font-size: 10px;
   font-weight: 700;
   text-align: center;
   line-height: 1;
@@ -288,19 +295,19 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   }
 
   .letter {
-    font-size: clamp(8px, 2vw, 14px);
+    font-size: 12px;
   }
 
   .points {
     bottom: 1px;
     right: 1px;
-    font-size: clamp(4px, 0.8vw, 7px);
-    width: clamp(6px, 1.5vw, 10px);
-    height: clamp(6px, 1.5vw, 10px);
+    font-size: 10px;
+    width: 10px;
+    height: 10px;
   }
 
   .label {
-    font-size: clamp(5px, 1.2vw, 8px);
+    font-size: 10px;
   }
 }
 
@@ -337,17 +344,18 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   }
 
   .letter {
-    font-size: clamp(8px, 2.2vw, 14px);
+    font-size: 12px;
   }
 
   .points {
-    font-size: clamp(4px, 1vw, 7px);
+    font-size: 9px;
     width: clamp(6px, 1.5vw, 10px);
     height: clamp(6px, 1.5vw, 10px);
+    right: 0px;
   }
 
   .label {
-    font-size: clamp(5px, 1.2vw, 8px);
+    font-size: 10px;
   }
 }
 

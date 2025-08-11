@@ -1,4 +1,5 @@
-.PHONY: install backend frontend db migrate upgrade clean test
+
+.PHONY: install backend frontend db migrate upgrade clean test test-frontend
 
 VENV=.venv
 PYTHON=$(VENV)/bin/python
@@ -25,8 +26,11 @@ migrate:
 upgrade:
 	$(VENV)/bin/alembic upgrade head
 
-test: install
+test-backend: install
 	@$(PYTHON) -m pytest backend/tests -q && echo "All tests passed" || (echo "\nTests failed. See output above." && exit 1)
+
+test-frontend:
+	npm test
 
 clean-db:
 	psql -U eloise -d scrabble -c "DELETE FROM placed_tiles; DELETE FROM words; DELETE FROM game_players; DELETE FROM games;DELETE from users;"

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 import random
-from typing import Iterable, List, Tuple, Optional
+from pathlib import Path
+from typing import Iterable, List, Optional, Tuple
 
 BOARD_SIZE = 15
 
@@ -52,48 +52,90 @@ DICTIONARY = set(Path("backend/ods8.txt").read_text().splitlines())
 # Board bonuses configuration
 # ---------------------------------------------------------------------------
 
+
 def _empty_board(value: str = "") -> List[List[str]]:
     return [[value for _ in range(BOARD_SIZE)] for _ in range(BOARD_SIZE)]
+
 
 BONUS: List[List[str]] = _empty_board()
 
 # Triple Word (TW)
 for r, c in [
-    (0, 0), (0, 7), (0, 14),
-    (7, 0), (7, 14),
-    (14, 0), (14, 7), (14, 14),
+    (0, 0),
+    (0, 7),
+    (0, 14),
+    (7, 0),
+    (7, 14),
+    (14, 0),
+    (14, 7),
+    (14, 14),
 ]:
     BONUS[r][c] = "TW"
 
 # Double Word (DW)
 for r, c in [
-    (1, 1), (2, 2), (3, 3), (4, 4),
-    (10, 10), (11, 11), (12, 12), (13, 13),
-    (1, 13), (2, 12), (3, 11), (4, 10),
-    (10, 4), (11, 3), (12, 2), (13, 1),
+    (1, 1),
+    (2, 2),
+    (3, 3),
+    (4, 4),
+    (10, 10),
+    (11, 11),
+    (12, 12),
+    (13, 13),
+    (1, 13),
+    (2, 12),
+    (3, 11),
+    (4, 10),
+    (10, 4),
+    (11, 3),
+    (12, 2),
+    (13, 1),
 ]:
     BONUS[r][c] = "DW"
 
 # Triple Letter (TL)
 for r, c in [
-    (1, 5), (1, 9),
-    (5, 1), (5, 5), (5, 9), (5, 13),
-    (9, 1), (9, 5), (9, 9), (9, 13),
-    (13, 5), (13, 9),
+    (1, 5),
+    (1, 9),
+    (5, 1),
+    (5, 5),
+    (5, 9),
+    (5, 13),
+    (9, 1),
+    (9, 5),
+    (9, 9),
+    (9, 13),
+    (13, 5),
+    (13, 9),
 ]:
     BONUS[r][c] = "TL"
 
 # Double Letter (DL)
 for r, c in [
-    (0, 3), (0, 11),
-    (2, 6), (2, 8),
-    (3, 0), (3, 7), (3, 14),
-    (6, 2), (6, 6), (6, 8), (6, 12),
-    (7, 3), (7, 11),
-    (8, 2), (8, 6), (8, 8), (8, 12),
-    (11, 0), (11, 7), (11, 14),
-    (12, 6), (12, 8),
-    (14, 3), (14, 11),
+    (0, 3),
+    (0, 11),
+    (2, 6),
+    (2, 8),
+    (3, 0),
+    (3, 7),
+    (3, 14),
+    (6, 2),
+    (6, 6),
+    (6, 8),
+    (6, 12),
+    (7, 3),
+    (7, 11),
+    (8, 2),
+    (8, 6),
+    (8, 8),
+    (8, 12),
+    (11, 0),
+    (11, 7),
+    (11, 14),
+    (12, 6),
+    (12, 8),
+    (14, 3),
+    (14, 11),
 ]:
     BONUS[r][c] = "DL"
 
@@ -126,7 +168,10 @@ reset_game()
 # Loading persisted game state
 # ---------------------------------------------------------------------------
 
-def load_game_state(tiles: Iterable[Tuple[int, int, str]], racks: Iterable[str]) -> None:
+
+def load_game_state(
+    tiles: Iterable[Tuple[int, int, str]], racks: Iterable[str]
+) -> None:
     """Populate board and bag from persisted *tiles* and *racks*."""
     global bag, board, first_move
     reset_game()
@@ -144,9 +189,11 @@ def load_game_state(tiles: Iterable[Tuple[int, int, str]], racks: Iterable[str])
     random.shuffle(bag)
     first_move = not list(tiles)
 
+
 # ---------------------------------------------------------------------------
 # Utility functions
 # ---------------------------------------------------------------------------
+
 
 def draw_tiles(n: int) -> List[str]:
     """Draw up to *n* tiles from the bag."""
@@ -162,7 +209,9 @@ class Placement(Tuple[int, int, str, bool]):
     blank: bool
 
 
-def _word_from_board(r: int, c: int, dr: int, dc: int) -> Tuple[str, List[Tuple[int, int]]]:
+def _word_from_board(
+    r: int, c: int, dr: int, dc: int
+) -> Tuple[str, List[Tuple[int, int]]]:
     """Read a word from the board starting at (r,c) moving (dr,dc)."""
     letters = []
     coords = []
@@ -174,7 +223,9 @@ def _word_from_board(r: int, c: int, dr: int, dc: int) -> Tuple[str, List[Tuple[
     return "".join(letters), coords
 
 
-def _score_word(coords: List[Tuple[int, int]], new_tiles: Iterable[Tuple[int, int]]) -> int:
+def _score_word(
+    coords: List[Tuple[int, int]], new_tiles: Iterable[Tuple[int, int]]
+) -> int:
     """Compute score for the word covering *coords*.
 
     *new_tiles* are coordinates of tiles placed this turn."""
@@ -204,108 +255,160 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
     Each placement is (row, col, letter, blank).
     Returns the score for the move or raises ValueError if the move is invalid."""
     global first_move
+
     if not placements:
         raise ValueError("No tiles placed")
 
+    # ----- 1) Alignement sur une ligne ou une colonne -----
     rows = {r for r, _, _, _ in placements}
     cols = {c for _, c, _, _ in placements}
     if len(rows) != 1 and len(cols) != 1:
         raise ValueError("Tiles must be in a single row or column")
     horizontal = len(rows) == 1
-    if len(placements) == 1:
-        r, c, _, _ = placements[0]
-        horizontal = (
-            (c > 0 and board[r][c - 1] is not None)
-            or (c < BOARD_SIZE - 1 and board[r][c + 1] is not None)
-        )
 
-    for r, c, letter, _ in placements:
+    # ----- 2) Vérif cases libres + poser temporairement -----
+    # (on pose pour pouvoir lire les mots ensuite)
+    # NB: on suppose que 'board', 'BOARD_SIZE' existent
+    used_positions = set()
+    for r, c, letter, is_blank in placements:
+        if not (0 <= r < BOARD_SIZE and 0 <= c < BOARD_SIZE):
+            raise ValueError("Placement out of board")
         if board[r][c] is not None:
             raise ValueError("Cell already occupied")
-        board[r][c] = letter if letter != "?" else None  # temp placeholder
+        # on stocke la lettre posée (minuscule si joker)
+        board[r][c] = letter.lower() if is_blank else letter.upper()
+        used_positions.add((r, c))
 
-    # Determine word start
+    # ----- 3) Continuité (pas de trous) + connexion au plateau -----
+    # Continuité sur la ligne/colonne
     if horizontal:
-        row = next(iter(rows))
-        cols_sorted = sorted(c for _, c, _, _ in placements)
-        c_start = cols_sorted[0]
-        while c_start > 0 and board[row][c_start - 1] is not None:
-            c_start -= 1
-        word, coords = _word_from_board(row, c_start, 0, 1)
+        r = next(iter(rows))
+        cmin = min(c for _, c, _, _ in placements)
+        cmax = max(c for _, c, _, _ in placements)
+        # il faut qu'entre cmin..cmax, au moins les emplacements posés ou existants remplissent la chaîne
+        for c in range(cmin, cmax + 1):
+            if board[r][c] is None:
+                # trou -> invalide
+                # revert
+                for rr, cc in used_positions:
+                    board[rr][cc] = None
+                raise ValueError("Tiles must be contiguous")
     else:
-        col = next(iter(cols))
-        rows_sorted = sorted(r for r, _, _, _ in placements)
-        r_start = rows_sorted[0]
-        while r_start > 0 and board[r_start - 1][col] is not None:
-            r_start -= 1
-        word, coords = _word_from_board(r_start, col, 1, 0)
+        c = next(iter(cols))
+        rmin = min(r for r, _, _, _ in placements)
+        rmax = max(r for r, _, _, _ in placements)
+        for r in range(rmin, rmax + 1):
+            if board[r][c] is None:
+                for rr, cc in used_positions:
+                    board[rr][cc] = None
+                raise ValueError("Tiles must be contiguous")
 
-    if word.upper() not in DICTIONARY:
-        # revert placements
-        for r, c, _, _ in placements:
-            board[r][c] = None
-        raise ValueError("Main word not in dictionary")
-
-    # Build set of new tile coords
-    new_coords = [(r, c) for r, c, _, _ in placements]
-
-    # Check connectivity / first move rules
+    # Connexion au plateau (hors premier coup)
     if first_move:
-        if (7, 7) not in new_coords:
-            for r, c, _, _ in placements:
-                board[r][c] = None
+        if (7, 7) not in used_positions:
+            for rr, cc in used_positions:
+                board[rr][cc] = None
             raise ValueError("First move must cover the center square")
-        first_move = False
+
     else:
-        if not any(
-            (r > 0 and board[r - 1][c] is not None)
-            or (r < BOARD_SIZE - 1 and board[r + 1][c] is not None)
-            or (c > 0 and board[r][c - 1] is not None)
-            or (c < BOARD_SIZE - 1 and board[r][c + 1] is not None)
-            for r, c in new_coords
-        ):
-            for r, c, _, _ in placements:
-                board[r][c] = None
+        # au moins un voisin existant
+        connected = False
+        for r, c, _, _ in placements:
+            for dr, dc in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                rr, cc = r + dr, c + dc
+                if (
+                    0 <= rr < BOARD_SIZE
+                    and 0 <= cc < BOARD_SIZE
+                    and board[rr][cc] is not None
+                    and (rr, cc) not in used_positions
+                ):
+                    connected = True
+                    break
+            if connected:
+                break
+        if not connected:
+            for rr, cc in used_positions:
+                board[rr][cc] = None
             raise ValueError("Move must connect to existing tiles")
 
-    # Resolve jokers (blanks) and finalize board letters
-    for r, c, letter, blank in placements:
-        board[r][c] = letter.upper() if not blank else letter.lower()
+    # ----- 4) Déterminer le mot principal -----
+    if horizontal:
+        r = next(iter(rows))
+        # remonter à gauche
+        c_start = min(c for _, c, _, _ in placements)
+        while c_start > 0 and board[r][c_start - 1] is not None:
+            c_start -= 1
+        main_word, main_coords = _word_from_board(r, c_start, 0, 1)
+    else:
+        c = next(iter(cols))
+        r_start = min(r for r, _, _, _ in placements)
+        while r_start > 0 and board[r_start - 1][c] is not None:
+            r_start -= 1
+        main_word, main_coords = _word_from_board(r_start, c, 1, 0)
 
-    total_score = _score_word(coords, new_coords)
+    # ----- 5) Valider le mot principal -----
+    if main_word.upper() not in DICTIONARY:
+        for rr, cc in used_positions:
+            board[rr][cc] = None
+        raise ValueError("Main word not in dictionary")
 
-    # Cross words
-    for r, c, letter, blank in placements:
+    # ----- 6) Construire et valider tous les mots secondaires -----
+    # (le cœur du correctif : on vérifie les mots croisés formés par chaque tuile posée)
+    cross_coords_list: List[List[Tuple[int, int]]] = []
+    for r, c, _, _ in placements:
         if horizontal:
-            # vertical cross word
-            r_start = r
-            while r_start > 0 and board[r_start - 1][c] is not None:
-                r_start -= 1
-            word, coords_cross = _word_from_board(r_start, c, 1, 0)
+            # le mot secondaire est vertical à cette colonne
+            rr = r
+            # si pas de voisin vertical => pas de mot secondaire
+            above = rr > 0 and board[rr - 1][c] is not None
+            below = rr + 1 < BOARD_SIZE and board[rr + 1][c] is not None
+            if not (above or below):
+                continue
+            # remonter
+            r0 = rr
+            while r0 > 0 and board[r0 - 1][c] is not None:
+                r0 -= 1
+            word, coords = _word_from_board(r0, c, 1, 0)
         else:
-            c_start = c
-            while c_start > 0 and board[r][c_start - 1] is not None:
-                c_start -= 1
-            word, coords_cross = _word_from_board(r, c_start, 0, 1)
-        if len(coords_cross) > 1:
+            # le mot secondaire est horizontal à cette ligne
+            cc = c
+            left = cc > 0 and board[r][cc - 1] is not None
+            right = cc + 1 < BOARD_SIZE and board[r][cc + 1] is not None
+            if not (left or right):
+                continue
+            c0 = cc
+            while c0 > 0 and board[r][c0 - 1] is not None:
+                c0 -= 1
+            word, coords = _word_from_board(r, c0, 0, 1)
+
+        # On ne garde que les "mots" de longueur >= 2
+        if len(coords) > 1:
             if word.upper() not in DICTIONARY:
-                for r2, c2, _, _ in placements:
-                    board[r2][c2] = None
+                # revert et échec si un seul mot secondaire n'est pas valide
+                for rr, cc in used_positions:
+                    board[rr][cc] = None
                 raise ValueError(f"Invalid cross word: {word}")
-            total_score += _score_word(coords_cross, [(r, c)])
+            cross_coords_list.append(coords)
 
+    # ----- 7) Calcul du score : mot principal + tous les mots secondaires -----
+    total = _score_word(main_coords, used_positions)
+    for coords in cross_coords_list:
+        total += _score_word(coords, used_positions)
+    # Bingo: 50 points si 7 tuiles posées en un seul coup
     if len(placements) == 7:
-        total_score += 50
-
-    return total_score
+        total += 50
+    # ----- 8) Fin de coup OK -----
+    # (ici tu peux conserver ton éventuel bonus de scrabble/bingo si tu l'avais ailleurs)
+    first_move = False
+    return total
 
 
 def bot_turn(rack: List[str]) -> Optional[Tuple[List[Tuple[int, int, str, bool]], int]]:
     """Make a move for the bot.
-    
+
     Args:
         rack: List of letters in the bot's rack
-        
+
     Returns:
         Tuple of (placements, score) where:
         - placements: List of (row, col, letter, is_blank) tuples for each letter to place
@@ -320,14 +423,15 @@ def bot_turn(rack: List[str]) -> Optional[Tuple[List[Tuple[int, int, str, bool]]
         print(f"Error in bot_turn: {e}")
         return None
 
+
 def generate_valid_moves(board, rack, dictionary):
     """Generate all valid moves for the given rack and board state.
-    
+
     Args:
         board: 2D list representing the current game board
         rack: List of letters in the player's rack
         dictionary: Set of valid words
-        
+
     Returns:
         List of valid moves, where each move is a tuple of (placements, score)
     """
@@ -335,7 +439,7 @@ def generate_valid_moves(board, rack, dictionary):
     # In a real implementation, you would generate all possible valid moves
     # by trying to place the rack letters on the board in all possible positions
     # and checking if they form valid words.
-    
+
     # For now, we'll return an empty list to indicate no valid moves found
     # The bot will handle this case by passing or exchanging tiles
     return []
