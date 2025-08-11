@@ -4,7 +4,8 @@
       <div v-for="(row, rowIndex) in grid" :key="rowIndex" class="row">
         <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell"
           :class="[board[rowIndex][colIndex], { 'has-letter': !!cell }]" @dragover.prevent
-          @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)" :draggable="!!cell"
+          @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
+          :draggable="!!cell && !locked[rowIndex][colIndex]"
           @dragstart="onDragStart($event, rowIndex, colIndex)">
           <template v-if="cell">
             <span class="letter">{{ cell.toUpperCase() }}</span>
@@ -40,6 +41,7 @@ mark([[0, 3], [0, 11], [2, 6], [2, 8], [3, 0], [3, 7], [3, 14], [6, 2], [6, 6], 
 boardRef.value[7][7] = 'CENTER'
 
 const grid = ref(Array.from({ length: size }, () => Array(size).fill('')))
+const locked = ref(Array.from({ length: size }, () => Array(size).fill(false)))
 
 function label(type) {
   switch (type) {
@@ -58,57 +60,65 @@ function onDrop(e, row, col) {
     const data = JSON.parse(e.dataTransfer.getData('text/plain'))
     if (data.source === 'rack' && data.letter) {
       grid.value[row][col] = data.letter
-      if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
+      locked.value[row][col] = false
       emit('placed', { index: data.index, row, col, letter: data.letter })
     } else if (data.source === 'board') {
+      if (locked.value[data.row][data.col]) return
       const letter = grid.value[data.row][data.col]
       if (!letter) return
       grid.value[data.row][data.col] = ''
-      boardRef.value[data.row][data.col] = boardRef.value[data.row][data.col].replace(' use', '')
+      locked.value[data.row][data.col] = false
       grid.value[row][col] = letter
-      if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
+      locked.value[row][col] = false
       emit('moved', { fromRow: data.row, fromCol: data.col, toRow: row, toCol: col, letter })
     }
   } catch { }
 }
 
 function remove(row, col) {
+  if (locked.value[row][col]) return
   const letter = grid.value[row][col]
   if (!letter) return
   grid.value[row][col] = ''
-  boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
+  locked.value[row][col] = false
   emit('removed', { row, col, letter })
 }
 
 function clearAll(placements) {
   placements.forEach(({ row, col }) => {
-    if (grid.value[row][col]) {
+    if (grid.value[row][col] && !locked.value[row][col]) {
       grid.value[row][col] = ''
-      boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
+      locked.value[row][col] = false
     }
   })
 }
 
 function onDragStart(e, row, col) {
   const letter = grid.value[row][col]
-  if (!letter) return
+  if (!letter || locked.value[row][col]) return
   e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'board', row, col, letter }))
 }
 
 function takeBack(row, col) {
   const letter = grid.value[row][col]
-  if (!letter) return null
+  if (!letter || locked.value[row][col]) return null
   grid.value[row][col] = ''
-  boardRef.value[row][col] = boardRef.value[row][col].replace(' use', '')
+  locked.value[row][col] = false
   return letter
 }
 
-function setTile(row, col, letter) {
+function setTile(row, col, letter, lock = true) {
   grid.value[row][col] = letter
-  if (!boardRef.value[row][col].includes('use')) boardRef.value[row][col] += ' use'
+  locked.value[row][col] = lock
 }
 
-defineExpose({ clearAll, takeBack, setTile })
+function lockTiles(placements) {
+  placements.forEach(({ row, col }) => {
+    if (grid.value[row][col]) locked.value[row][col] = true
+  })
+}
+
+defineExpose({ clearAll, takeBack, setTile, lockTiles })
 </script>
 
 <style scoped>
@@ -247,14 +257,10 @@ defineExpose({ clearAll, takeBack, setTile })
 }
 
 /* Cases avec lettres posées */
-.use {
+.has-letter {
   background: linear-gradient(to bottom right, #EBBF56, #D6A63B) !important;
   color: #000 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.5) !important;
-  /* border: 2px solid rgba(255, 255, 255, 0.8) !important; */
-}
-
-.has-letter {
   cursor: grab;
 }
 
