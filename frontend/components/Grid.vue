@@ -126,7 +126,7 @@ defineExpose({ clearAll, takeBack, setTile })
   align-items: center;
   padding: var(--spacing-md, 1rem);
   background: rgba(255, 255, 255, 0.5);
-  border-radius: var(--radius-lg, 16px);
+  /* border-radius: var(--radius-lg, 16px); */
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
   margin: var(--spacing-lg, 1.5rem) auto;
   width: fit-content;
@@ -141,7 +141,7 @@ defineExpose({ clearAll, takeBack, setTile })
   gap: var(--grid-gap);
   background: #999;
   border: var(--grid-border-width) solid #666;
-  border-radius: var(--radius-sm, 8px);
+  /* border-radius: var(--radius-sm, 8px); */
   padding: var(--grid-gap);
   width: fit-content;
   aspect-ratio: 1;
@@ -168,7 +168,7 @@ defineExpose({ clearAll, takeBack, setTile })
   background: #f5f5dc;
   color: #333;
   font-size: clamp(8px, 1.8vw, 12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  border: var(--grid-border-width) solid var(--color-border, #666);
 }
 
 /* États de hover et active */
@@ -209,7 +209,7 @@ defineExpose({ clearAll, takeBack, setTile })
 
 /* Labels des cases spéciales */
 .label {
-  font-size: clamp(6px, 1.4vw, 10px);
+  font-size: 10px;
   font-weight: 700;
   text-align: center;
   line-height: 1;
@@ -251,7 +251,7 @@ defineExpose({ clearAll, takeBack, setTile })
   background: linear-gradient(to bottom right, #EBBF56, #D6A63B) !important;
   color: #000 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15), inset 0 1px 2px rgba(255, 255, 255, 0.5) !important;
-  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  /* border: 2px solid rgba(255, 255, 255, 0.8) !important; */
 }
 
 .has-letter {
@@ -282,7 +282,7 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .letter {
-    font-size: clamp(8px, 2vw, 14px);
+    font-size: 10px;
   }
 
   .points {
@@ -294,7 +294,7 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .label {
-    font-size: clamp(5px, 1.2vw, 8px);
+    font-size: 10px
   }
 }
 
@@ -330,7 +330,7 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .letter {
-    font-size: clamp(7px, 1.8vw, 12px);
+    font-size: 10px;
   }
 
   .points {
@@ -340,7 +340,7 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .label {
-    font-size: clamp(4px, 1vw, 7px);
+    font-size: 8px;
   }
 }
 

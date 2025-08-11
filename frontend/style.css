@@ -291,8 +291,8 @@ button:active,
 
 .tile .points {
   position: absolute;
-  bottom: 2px;
-  right: 3px;
+  bottom: 1px;
+  right: 2px;
   font-size: 0.6rem;
   font-weight: 600;
   color: var(--color-text-secondary);
