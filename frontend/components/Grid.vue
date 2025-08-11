@@ -209,13 +209,13 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
 
 .points {
   position: absolute;
-  bottom: clamp(1px, 0.3vw, 3px);
-  right: clamp(1px, 0.3vw, 3px);
+  bottom: 0px;
+  right: 0px;
   font-size: clamp(5px, 1vw, 8px);
   font-weight: 600;
-  color: #555;
-  background: rgba(255, 255, 255, 0.8);
-  border-radius: 50%;
+  color: #64748b;
+  /* background: rgba(255, 255, 255, 0.8); */
+  /* border-radius: 50%; */
   width: clamp(8px, 1.8vw, 12px);
   height: clamp(8px, 1.8vw, 12px);
   display: flex;
