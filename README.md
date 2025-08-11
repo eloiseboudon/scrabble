@@ -32,7 +32,7 @@ Then visit `http://localhost:5173` in a browser.
 - Use the input box and **Valider** button to check a word against the backend.
 
 ### Notes
-- `backend/ods8.txt` contains a small subset of the ODS8 word list for demonstration purposes.
+- `backend/ods8.txt` contains the ODS8 word list for demonstration purposes.
 - Ensure PostgreSQL is available if you plan to extend the project with database features.
 
 ## Règles du jeu
@@ -74,5 +74,5 @@ La partie s'arrête lorsque le sac est vide et qu'un joueur n'a plus de lettres,
 - Il est possible de prolonger un mot existant si le nouveau mot est valide.
 - Pluriels et formes conjuguées sont autorisés s'ils apparaissent dans l'ODS8.
 
-### 🏆 Variante Duplicate
+### 🏆 Variante Duplicate - A faire
 En mode Duplicate, tous les joueurs jouent avec les mêmes lettres et seul le meilleur coup est retenu pour le plateau. Le gagnant est celui qui totalise le plus de points.

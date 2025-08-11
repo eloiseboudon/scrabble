@@ -1,92 +1,85 @@
-🧱 Étapes du plan de développement
-🔹 1. Setup local de l’environnement
-🔧 Objectif : pouvoir lancer le frontend et le backend en local avec persistance des données.
+# 🧱 Plan de Développement du Projet Scrabble
 
-🆗 Init backend avec FastAPI (ou Flask si tu préfères)
+## 🔹 1. Setup Local de l'Environnement
+**🔧 Objectif** : Pouvoir lancer le frontend et le backend en local avec persistance des données.
 
-🆗 Init frontend avec Vue 3 + Vite
+- [x] Init backend avec FastAPI (ou Flask si tu préfères)
+- [x] Init frontend avec Vue 3 + Vite
+- [x] Setup BDD PostgreSQL locale avec ORM (SQLAlchemy) ou Prisma
+- [ ] Dockeriser l'ensemble pour développement simplifié
+- [x] Créer repo GitHub avec branche main et dev
 
-🆗 Setup BDD PostgreSQL locale avec ORM (SQLAlchemy) ou Prisma (si besoin d’un layer JS)
+## ✅ 2. Grille de Scrabble (UI + Logique)
+**🎯 MVP 1** : Affichage et interaction simple
 
- Dockeriser l’ensemble pour développement simplifié
+- [x] Afficher la grille Scrabble standard (15x15)
+- [x] Permettre le placement de lettres (drag & drop ou clic + clavier)
+- [x] Afficher le score temporaire d'un mot placé
+- [x] Bonus : lecture du fichier ODS8 pour vérification d'un mot placé
 
-🆗 Créer repo GitHub avec branche main et dev
+## 🔹 3. Intégration du dictionnaire ODS8
+**🆗 Récupérer la base de mots ODS8 (GitHub, CSV ou autre)**
 
-✅ 2. Grille de Scrabble (UI + logique)
-🎯 MVP 1 : Affichage et interaction simple
+- [ ] Charger en BDD ou dans un système de recherche optimisé (Trie, Redis, etc.)
+- [ ] Endpoint is_valid_word(word: str) dans le backend
 
-🆗 Afficher la grille Scrabble standard (15x15)
+## 🔹 4. Création du système utilisateur
+**🎯 MVP 2** : Authentification
 
-🆗 Permettre le placement de lettres (drag & drop ou clic + clavier)
+- [ ] Auth backend avec FastAPI Users (ou maison) + JWT
+- [ ] Intégrer Google OAuth (sign in with Google)
+- [ ] Front : formulaire de login + bouton Google
+- [ ] Gestion des sessions côté front
 
-🆗 Afficher le score temporaire d’un mot placé
+## 🔹 5a. Gestion des parties contre bot
 
-🆗 Bonus : lecture du fichier ODS8 pour vérification d’un mot placé
+- [x] Placement des lettres
+- [x] Calcul des scores
+- [ ] Fin de partie, sauvegarde
+- [ ] Historique des parties (rejouer, consulter, supprimer)
 
-🔹 3. Intégration du dictionnaire ODS8
-🆗 Récupérer la base de mots ODS8 (GitHub, CSV ou autre)
+## 🔹 5b. Gestion des parties 1v1
 
-🆗 Charger en BDD ou dans un système de recherche optimisé (Trie, Redis, etc.)
+- [ ] Placement des lettres
+- [ ] Calcul des scores
+- [ ] Fin de partie, sauvegarde
+- [ ] Historique des parties
 
-🆗 Endpoint is_valid_word(word: str) dans le backend
+## 🔸 5c. Mode Multijoueur
+- [ ] Création d'une partie
+- [ ] Placement des lettres
+- [ ] Calcul des scores
+- [ ] Fin de partie, sauvegarde
+- [ ] Historique des parties
 
-🔹 4. Création du système utilisateur
-🎯 MVP 2 : Authentification
+## 🔹 5d. Mode Duplicate
 
- Auth backend avec FastAPI Users (ou maison) + JWT
+- [ ] Création d'une partie
+- [ ] Placement des lettres
+- [ ] Calcul des scores
+- [ ] Fin de partie, sauvegarde
+- [ ] Historique des parties
 
- Intégrer Google OAuth (sign in with Google)
+## 🔹 Transverse
 
- Front : formulaire de login + bouton Google
+- [ ] Message dans pop-up
+- [ ] Si mot non valide croix sinon bouton valider + nombre de point affiché
+- [ ] Si pas de tuiles posées bouton valider masqué et bouton passé
 
- Gestion des sessions côté front
+## 🧪 6. Tests
+- [ ] Tests unitaires
+- [ ] Tests d'intégration
+- [ ] Tests backend
+- [ ] Tests frontend
 
-🔹 5a. Gestion des parties contre bot
-🆗 Création d’une partie (1v1 ou contre IA plus tard)
+## 📱 7. Interface Mobile
+- [x] Adapter le frontend Vue en responsive (taille mobile)
+- [ ] Tester comportement tactile (placement, scroll, zoom)
+- [ ] Bonus : transformer en PWA ou wrapper via Capacitor pour Android/iOS
 
-🆗 Placement des lettres
-
-🆗 Calcul des scores
-
- Fin de partie, sauvegarde
-
- Historique des parties (rejouer, consulter, supprimer)
-
- 🔹 5b. Gestion des parties 1v1
- Création d’une partie (1v1 ou contre IA plus tard)
-
- Placement des lettres
-
- Calcul des scores
-
- Fin de partie, sauvegarde
-
- Historique des parties (rejouer, consulter, supprimer)
-
-  🔹 5c. Gestion des parties multijoueur
- Création d’une partie (1v1 ou contre IA plus tard)
-
- Placement des lettres
-
- Calcul des scores
-
- Fin de partie, sauvegarde
-
- Historique des parties (rejouer, consulter, supprimer)
-
-🔹 6. Interface mobile (web responsive d''abord)
-🆗 Adapter le frontend Vue en responsive (taille mobile)
-
- Tester comportement tactile (placement, scroll, zoom)
-
- Bonus : transformer en PWA ou wrapper via Capacitor pour Android/iOS
-
-🔹 7. Déploiement -- solution à trouver (simple sans Docker en premier)
- Déploiement sur un VPS (OVH ou autre) avec Docker Compose
-
- HTTPS avec Let’s Encrypt
-
- Utilisation de services comme Railway, Fly.io ou Render (facultatif pour POC)
-
- Nom de domaine et configuration DNS
-
+## 🚀 8. Déploiement
+**Solution à trouver (simple sans Docker en premier)**
+- [ ] Déploiement sur VPS (OVH ou autre) avec Docker Compose
+- [ ] Configuration HTTPS avec Let's Encrypt
+- [ ] Services alternatifs : Railway, Fly.io ou Render (facultatif)
+- [ ] Configuration du nom de domaine et DNS
