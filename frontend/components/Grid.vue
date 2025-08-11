@@ -126,7 +126,7 @@ defineExpose({ clearAll, takeBack, setTile })
   align-items: center;
   padding: var(--spacing-md, 1rem);
   background: rgba(255, 255, 255, 0.5);
-  /* border-radius: var(--radius-lg, 16px); */
+  border-radius: var(--radius-lg, 16px);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.03);
   margin: var(--spacing-lg, 1.5rem) auto;
   width: fit-content;
@@ -168,7 +168,7 @@ defineExpose({ clearAll, takeBack, setTile })
   background: #f5f5dc;
   color: #333;
   font-size: clamp(8px, 1.8vw, 12px);
-  border: var(--grid-border-width) solid var(--color-border, #666);
+  border: 0.5px solid #666;
 }
 
 /* États de hover et active */
@@ -209,7 +209,7 @@ defineExpose({ clearAll, takeBack, setTile })
 
 /* Labels des cases spéciales */
 .label {
-  font-size: 10px;
+  font-size: clamp(6px, 1.4vw, 10px);
   font-weight: 700;
   text-align: center;
   line-height: 1;
@@ -282,7 +282,7 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .letter {
-    font-size: 10px;
+    font-size: clamp(8px, 2vw, 14px);
   }
 
   .points {
@@ -294,14 +294,14 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .label {
-    font-size: 10px
+    font-size: clamp(5px, 1.2vw, 8px);
   }
 }
 
-/* Responsive pour mobiles - GRILLE 100% WIDTH SANS BORDURES */
+/* Responsive pour mobiles - GRILLE 100% WIDTH SANS BORDURES NI MARGES */
 @media (max-width: 480px) {
   :root {
-    --cell-size: calc((100vw - 1rem) / 15);
+    --cell-size: calc(100vw / 15);
     --grid-gap: 0;
     --grid-border-width: 0px;
   }
@@ -317,30 +317,31 @@ defineExpose({ clearAll, takeBack, setTile })
   }
 
   .scrabble-grid {
-    width: 100%;
-    max-width: 100%;
+    padding: 0;
+    width: 100vw;
+    max-width: 100vw;
     border: none;
     border-radius: 0;
     background: transparent;
   }
 
   .cell {
-    border-radius: 1px;
+    border-radius: 0;
     border: 0.5px solid #ccc;
   }
 
   .letter {
-    font-size: 10px;
+    font-size: clamp(8px, 2.2vw, 14px);
   }
 
   .points {
-    font-size: clamp(3px, 0.7vw, 6px);
-    width: clamp(5px, 1.2vw, 8px);
-    height: clamp(5px, 1.2vw, 8px);
+    font-size: clamp(4px, 1vw, 7px);
+    width: clamp(6px, 1.5vw, 10px);
+    height: clamp(6px, 1.5vw, 10px);
   }
 
   .label {
-    font-size: 8px;
+    font-size: clamp(5px, 1.2vw, 8px);
   }
 }
 
