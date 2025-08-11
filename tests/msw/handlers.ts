@@ -1,7 +1,7 @@
-import { rest } from 'msw'
+import { http, HttpResponse } from 'msw'
 
 export const handlers = [
-  rest.post('/games', (_req, res, ctx) => res(ctx.json({ game_id: 'g1' }))),
-  rest.post('/games/g1/join', (_req, res, ctx) => res(ctx.json({ player_id: 'p1' }))),
-  rest.post('/games/g1/start', (_req, res, ctx) => res(ctx.json({ ok: true }))),
+  http.post('/games', () => HttpResponse.json({ game_id: 'g1' })),
+  http.post('/games/g1/join', () => HttpResponse.json({ player_id: 'p1' })),
+  http.post('/games/g1/start', () => HttpResponse.json({ ok: true })),
 ]
