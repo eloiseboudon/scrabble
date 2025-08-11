@@ -35,6 +35,7 @@
 
 - [x] Placement des lettres
 - [x] Calcul des scores
+- [ ] Gestion du niveau de l'IA (très facile : < 15pts, facile : < 20pts, moyen : < 25pts, difficile : < 30pts, hardcore : > 100pts)
 - [ ] Fin de partie, sauvegarde
 - [ ] Historique des parties (rejouer, consulter, supprimer)
 

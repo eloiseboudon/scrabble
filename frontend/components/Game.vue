@@ -5,8 +5,8 @@
       <button @click="$emit('finish')">Terminer la partie</button>
     </div>
 
-    <Grid ref="gridRef" :letter-points="letterPoints" @placed="$emit('placed', $event)"
-      @removed="$emit('removed', $event)" @moved="$emit('moved', $event)" />
+    <Grid ref="gridRef" :letter-points="letterPoints" @placed="handlePlaced"
+      @removed="handleRemoved" @moved="emit('moved', $event)" />
 
     <div class="rack" @dragover.prevent @drop="$emit('rack-drop', $event, rack.length)">
       <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
@@ -27,17 +27,17 @@
       <button @click="$emit('shuffle')">
         Mélanger
       </button>
-      <button v-if="tile" @click="$emit('play')">
+      <button v-show="placements" @click="$emit('play')">
         Jouer
       </button>
-      <button v-if="!tile" @click="$emit('pass')">
+      <button v-show="!placements" @click="$emit('pass')">
         Passer
       </button>
     </div>
   </div>
 </template>
 <script setup>
-import { defineExpose, ref } from 'vue'
+import { ref } from 'vue'
 import Grid from './Grid.vue'
 
 defineProps({
@@ -48,18 +48,45 @@ defineProps({
   score_adversaire: { type: Number, default: 0 }
 })
 
-defineEmits([
+const emit = defineEmits([
   'home', 'finish', 'placed', 'removed', 'moved',
   'rack-drop', 'drag-start', 'play', 'clear', 'shuffle', 'pass'
 ])
 
 const gridRef = ref(null)
+const placements = ref(0)
+
+function handlePlaced(payload) {
+  placements.value++
+  emit('placed', payload)
+}
+
+function handleRemoved(payload) {
+  if (placements.value > 0) placements.value--
+  emit('removed', payload)
+}
 
 // ✅ Expose des wrappers stables
-function setTile(r, c, l, lock = true) { gridRef.value?.setTile(r, c, l, lock) }
-function takeBack(r, c) { return gridRef.value?.takeBack(r, c) }
-function clearAll(placements) { gridRef.value?.clearAll(placements) }
-function lockTiles(placements) { gridRef.value?.lockTiles(placements) }
+function setTile(r, c, l, lock = true) {
+  gridRef.value?.setTile(r, c, l, lock)
+  if (!lock) placements.value++
+}
+
+function takeBack(r, c) {
+  const letter = gridRef.value?.takeBack(r, c)
+  if (letter) placements.value = Math.max(0, placements.value - 1)
+  return letter
+}
+
+function clearAll(tiles) {
+  gridRef.value?.clearAll(tiles)
+  placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
+}
+
+function lockTiles(tiles) {
+  gridRef.value?.lockTiles(tiles)
+  placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
+}
 
 defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
 </script>
