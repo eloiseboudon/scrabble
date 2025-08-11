@@ -61,9 +61,10 @@ defineEmits([
 const gridRef = ref(null)
 
 // ✅ Expose des wrappers stables
-function setTile(r, c, l) { gridRef.value?.setTile(r, c, l) }
+function setTile(r, c, l, lock = true) { gridRef.value?.setTile(r, c, l, lock) }
 function takeBack(r, c) { return gridRef.value?.takeBack(r, c) }
 function clearAll(placements) { gridRef.value?.clearAll(placements) }
+function lockTiles(placements) { gridRef.value?.lockTiles(placements) }
 
-defineExpose({ gridRef, setTile, takeBack, clearAll })
+defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
 </script>

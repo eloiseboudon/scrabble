@@ -216,7 +216,7 @@
               gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
               return
             }
-            gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase())
+            gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase(), false)
             placements.value.push({ row: payload.row, col: payload.col, letter: choice, blank: true })
           } else {
             placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter, blank: false })
@@ -272,6 +272,7 @@
           }
           const data = await res.json()
           result.value = `Score : ${data.score}`
+          gameRef.value.lockTiles(placements.value)
           placements.value = []
           if (data.bot_move) {
             data.bot_move.forEach(([row, col, letter, blank]) => {
