@@ -204,7 +204,7 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   font-weight: 700;
   font-size: clamp(10px, 2.2vw, 16px);
   color: #333;
-  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8);
+  /* text-shadow: 0 1px 2px rgba(255, 255, 255, 0.8); */
 }
 
 .points {
@@ -213,7 +213,7 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   right: 0px;
   font-size: clamp(5px, 1vw, 8px);
   font-weight: 600;
-  color: #64748b;
+  color: #444;
   /* background: rgba(255, 255, 255, 0.8); */
   /* border-radius: 50%; */
   width: clamp(8px, 1.8vw, 12px);
@@ -226,7 +226,7 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
 
 /* Labels des cases spéciales */
 .label {
-  font-size: clamp(6px, 1.4vw, 10px);
+  font-size: 10px;
   font-weight: 700;
   text-align: center;
   line-height: 1;
@@ -295,19 +295,19 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   }
 
   .letter {
-    font-size: clamp(8px, 2vw, 14px);
+    font-size: 12px;
   }
 
   .points {
     bottom: 1px;
     right: 1px;
-    font-size: clamp(4px, 0.8vw, 7px);
-    width: clamp(6px, 1.5vw, 10px);
-    height: clamp(6px, 1.5vw, 10px);
+    font-size: 10px;
+    width: 10px;
+    height: 10px;
   }
 
   .label {
-    font-size: clamp(5px, 1.2vw, 8px);
+    font-size: 10px;
   }
 }
 
@@ -344,17 +344,18 @@ defineExpose({ clearAll, takeBack, setTile, lockTiles })
   }
 
   .letter {
-    font-size: clamp(8px, 2.2vw, 14px);
+    font-size: 12px;
   }
 
   .points {
-    font-size: clamp(4px, 1vw, 7px);
+    font-size: 9px;
     width: clamp(6px, 1.5vw, 10px);
     height: clamp(6px, 1.5vw, 10px);
+    right: 0px;
   }
 
   .label {
-    font-size: clamp(5px, 1.2vw, 8px);
+    font-size: 10px;
   }
 }
 
