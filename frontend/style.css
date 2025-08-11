@@ -89,6 +89,32 @@
   --grid-border-width: clamp(1px, 0.2vw, 2px);
 }
 
+.game,
+.grid,
+.rack {
+  touch-action: none;
+  /* autorise preventDefault sur touchmove */
+}
+
+.tile {
+  -webkit-user-drag: none;
+  user-select: none;
+  touch-action: none;
+}
+
+.tile.ghost {
+  opacity: 0.85;
+  padding: 6px 8px;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+  background: #fff;
+}
+
+.grid-cell {
+  position: relative;
+}
+
+
 * {
   margin: 0;
   padding: 0;
