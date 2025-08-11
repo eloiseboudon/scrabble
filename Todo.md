@@ -24,13 +24,13 @@
 🆗 Bonus : lecture du fichier ODS8 pour vérification d’un mot placé
 
 🔹 3. Intégration du dictionnaire ODS8
- Récupérer la base de mots ODS8 (GitHub, CSV ou autre)
+🆗 Récupérer la base de mots ODS8 (GitHub, CSV ou autre)
 
- Charger en BDD ou dans un système de recherche optimisé (Trie, Redis, etc.)
+🆗 Charger en BDD ou dans un système de recherche optimisé (Trie, Redis, etc.)
 
- Endpoint is_valid_word(word: str) dans le backend
+🆗 Endpoint is_valid_word(word: str) dans le backend
 
-🔹 4. Création du système utilisateur
+✅ 4. Création du système utilisateur
 🎯 MVP 2 : Authentification
 
  Auth backend avec FastAPI Users (ou maison) + JWT
@@ -41,7 +41,29 @@
 
  Gestion des sessions côté front
 
-🔹 5. Gestion des parties
+🔹 5a. Gestion des parties contre bot
+🆗 Création d’une partie (1v1 ou contre IA plus tard)
+
+🆗 Placement des lettres
+
+🆗 Calcul des scores
+
+ Fin de partie, sauvegarde
+
+ Historique des parties (rejouer, consulter, supprimer)
+
+ 🔹 5b. Gestion des parties 1v1
+ Création d’une partie (1v1 ou contre IA plus tard)
+
+ Placement des lettres
+
+ Calcul des scores
+
+ Fin de partie, sauvegarde
+
+ Historique des parties (rejouer, consulter, supprimer)
+
+  🔹 5c. Gestion des parties multijoueur
  Création d’une partie (1v1 ou contre IA plus tard)
 
  Placement des lettres
@@ -53,13 +75,13 @@
  Historique des parties (rejouer, consulter, supprimer)
 
 🔹 6. Interface mobile (web responsive d''abord)
- Adapter le frontend Vue en responsive (taille mobile)
+🆗 Adapter le frontend Vue en responsive (taille mobile)
 
  Tester comportement tactile (placement, scroll, zoom)
 
  Bonus : transformer en PWA ou wrapper via Capacitor pour Android/iOS
 
-🔹 7. Déploiement
+🔹 7. Déploiement -- solution à trouver (simple sans Docker en premier)
  Déploiement sur un VPS (OVH ou autre) avec Docker Compose
 
  HTTPS avec Let’s Encrypt
