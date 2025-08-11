@@ -29,15 +29,15 @@ describe('Grid.vue', () => {
     expect(wrapper.emitted('removed')).toBeTruthy()
   })
 
-  it('place depuis le rack sur la case centrale et émet payload complet', async () => {
+  it('places tile from rack on center cell and emits complete payload', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
-    const center = wrapper.find('.CENTER') // ta classe
+    const center = wrapper.find('.CENTER')
     await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: 'A' }) })
     const placed = wrapper.emitted('placed')?.[0]?.[0]
     expect(placed).toEqual({ row: 7, col: 7, letter: 'A', from: 'rack', rackIndex: 0 })
   })
 
-  it('déplace une tuile de (7,7) vers (7,8) et émet "moved"', async () => {
+  it('moves tile from (7,7) to (7,8) and emits "moved" event', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
     const center = wrapper.find('.CENTER')
     await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: 'A' }) })
@@ -49,15 +49,15 @@ describe('Grid.vue', () => {
     expect(moved).toEqual({ from: { row: 7, col: 7 }, to: { row: 7, col: 8 }, letter: 'A' })
   })
 
-  it('refuse de poser sur une case déjà occupée', async () => {
+  it('rejects placing on already occupied cell', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
     const center = wrapper.find('.CENTER')
     await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: 'A' }) })
     await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 1, letter: 'E' }) })
-    expect(wrapper.emitted('placed')?.length).toBe(1) // le 2e drop n’a rien émis
+    expect(wrapper.emitted('placed')?.length).toBe(1) // second drop didn't emit
   })
 
-  it('clic sur une case occupée émet "removed" avec coordonnées', async () => {
+  it('click on occupied cell emits "removed" with coordinates', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
     const center = wrapper.find('.CENTER')
     await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: 'A' }) })
@@ -66,20 +66,19 @@ describe('Grid.vue', () => {
     expect(removed).toEqual({ row: 7, col: 7, letter: 'A' })
   })
 
-  it('rend les classes de bonus (MD/MT/LD/LT) aux positions attendues', () => {
+  it('renders bonus classes (TW/DW/TL/DL) at expected positions', () => {
     const w = mount(Grid, { props: { letterPoints } })
-    expect(w.findAll('.MT').length).toBeGreaterThan(0)
-    expect(w.findAll('.MD').length).toBeGreaterThan(0)
-    expect(w.findAll('.LT').length).toBeGreaterThan(0)
-    expect(w.findAll('.LD').length).toBeGreaterThan(0)
+    expect(w.findAll('.TW').length).toBeGreaterThan(0)
+    expect(w.findAll('.DW').length).toBeGreaterThan(0)
+    expect(w.findAll('.TL').length).toBeGreaterThan(0)
+    expect(w.findAll('.DL').length).toBeGreaterThan(0)
   })
 
-  it('pose un joker et indique blank=true', async () => {
+  it('places a blank tile and indicates blank=true', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
     const center = wrapper.find('.CENTER')
-    await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: '*' }) }) // ou blank:true selon ton DnD
+    await center.trigger('drop', { dataTransfer: dt({ source: 'rack', index: 0, letter: '*' }) })
     const placed = wrapper.emitted('placed')?.[0]?.[0]
-    // adapte à ton contrat (ex: letter:'E', blank:true après choix)
     expect((placed as any).blank).toBe(true)
   })
 
