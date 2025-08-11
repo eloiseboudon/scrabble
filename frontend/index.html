@@ -1,105 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Scrabble</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1rem;
-        margin: 0;
-        padding: 1rem;
-        background-color: #fafafa;
-      }
-      .rack {
-        display: flex;
-        gap: 4px;
-      }
-      .tile {
-        width: 30px;
-        height: 30px;
-        border: 1px solid #333;
-        background: #f0e6d2;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        font-weight: bold;
-        cursor: grab;
-        user-select: none;
-      }
-    </style>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module">
-      import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
-      import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
 
-      const options = {
-        moduleCache: { vue: Vue },
-        async getFile(url) {
-          const res = await fetch(url)
-          if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
-          return await res.text()
-        },
-        addStyle(textContent) {
-          const style = Object.assign(document.createElement('style'), { textContent })
-          const ref = document.head.getElementsByTagName('style')[0] || null
-          document.head.insertBefore(style, ref)
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scrabble</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div id="app"></div>
+  <script type="module">
+    import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+    import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
+    import { LETTER_POINTS } from './letterPoints.js'
+
+    const options = {
+      moduleCache: { vue: Vue },
+      async getFile(url) {
+        const res = await fetch(url)
+        if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
+        return await res.text()
+      },
+      addStyle(textContent) {
+        const style = Object.assign(document.createElement('style'), { textContent })
+        const ref = document.head.getElementsByTagName('style')[0] || null
+        document.head.insertBefore(style, ref)
+      }
+    }
+
+    const Grid = await loadModule('./components/Grid.vue', options)
+    const Home = await loadModule('./components/Home.vue', options)
+    const Game = await loadModule('./components/Game.vue', options)
+    const Settings = await loadModule('./components/Settings.vue', options)
+    const Profile = await loadModule('./components/Profile.vue', options)
+    const Login = await loadModule('./components/Login.vue', options)
+
+    const App = {
+      components: { Grid, Home, Game, Settings, Profile, Login },
+      setup() {
+        const view = Vue.ref('home')
+        const userId = Vue.ref(localStorage.getItem('userId'))
+        const ongoingGames = Vue.ref([])
+        const finishedGames = Vue.ref([])
+        const rack = Vue.ref([])
+        const placements = Vue.ref([])
+        const result = Vue.ref('')
+        const score = Vue.ref(0)
+        const score_adversaire = Vue.ref(0)
+        const gameRef = Vue.ref(null)
+        const currentGame = Vue.ref(null)
+
+        async function loadGames() {
+          if (!userId.value) return
+          const res = await fetch(`http://localhost:8000/games?user_id=${userId.value}`)
+          const data = await res.json()
+          ongoingGames.value = data.ongoing
+          finishedGames.value = data.finished
         }
-      }
 
-      const Grid = await loadModule('./components/Grid.vue', options)
-      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        function onAuth(id) {
+          userId.value = id
+          localStorage.setItem('userId', id)
+          view.value = 'home'
+          loadGames()
+        }
 
-      function randomRack() {
-        return Array.from({ length: 7 }, () => letters[Math.floor(Math.random() * letters.length)])
-      }
+        async function newGameBot() {
+          const resGame = await fetch('http://localhost:8000/games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ vs_computer: true })
+          })
+          const { game_id } = await resGame.json()
+          const joinRes = await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: Number(userId.value) })
+          })
+          const { player_id } = await joinRes.json()
+          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_computer: true })
+          })
+          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+            method: 'POST'
+          })
+          const startData = await startRes.json()
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
+          placements.value = []
+          result.value = ''
+          score.value = 0
+          score_adversaire.value = 0
+          const game = { id: game_id, player_id }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
+        }
 
-      const App = {
-        components: { Grid },
-        setup() {
-          const rack = Vue.ref(randomRack())
-          const word = Vue.ref('')
-          const result = Vue.ref('')
-
-          function onDragStart(e, idx) {
-            e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx }))
+        async function newGameFriend(pseudo) {
+          const resUser = await fetch(`http://localhost:8000/users/by-username?username=${encodeURIComponent(pseudo)}`)
+          if (!resUser.ok) {
+            alert('Utilisateur introuvable')
+            return
           }
+          const { user_id: friendId } = await resUser.json()
+          const resGame = await fetch('http://localhost:8000/games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+          })
+          const { game_id } = await resGame.json()
+          const join1 = await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: Number(userId.value) })
+          })
+          const { player_id } = await join1.json()
+          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: friendId })
+          })
+          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+            method: 'POST'
+          })
+          const startData = await startRes.json()
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
+          placements.value = []
+          result.value = ''
+          score.value = 0
+          score_adversaire.value = 0
+          const game = { id: game_id, player_id }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
+        }
 
-          function placed(idx) {
-            rack.value.splice(idx, 1)
+        async function resumeGame(game) {
+          currentGame.value = game
+          view.value = 'game'
+          await Vue.nextTick()
+          const res = await fetch(`http://localhost:8000/games/${game.id}?player_id=${game.player_id}`)
+          const data = await res.json()
+
+          rack.value = data.rack
+          placements.value = []
+          result.value = ''
+          score.value = data.scores[game.player_id] || 0
+          const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
+          score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+
+          view.value = 'game'
+          await Vue.nextTick() // assure que <Game> et <Grid> sont montés
+
+          // ✅ API propre exposée par Game.vue
+          data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
+        }
+
+        async function finishGame() {
+          if (currentGame.value) {
+            await fetch('http://localhost:8000/finish', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ game_id: currentGame.value.id })
+            })
+            const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
+            if (idx !== -1) ongoingGames.value.splice(idx, 1)
+            finishedGames.value.push(currentGame.value)
+            currentGame.value = null
           }
+          view.value = 'home'
+        }
 
-          async function validate() {
-            const res = await fetch(`http://localhost:8000/validate?word=${word.value}`)
-            const data = await res.json()
-            result.value = data.valid ? 'Mot valide' : 'Mot invalide'
+        function goHome() {
+          view.value = 'home'
+        }
+
+        function onDragStart(e, idx) {
+          e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx, source: 'rack' }))
+        }
+
+        function onRackDrop(e, idx) {
+          const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+          if (data.source === 'rack') {
+            const from = data.index
+            const tile = rack.value.splice(from, 1)[0]
+            const insert = from < idx ? idx - 1 : idx
+            rack.value.splice(insert, 0, tile)
+          } else if (data.source === 'board') {
+            const letter = gameRef.value.gridRef.value.takeBack(data.row, data.col)
+            if (!letter) return
+            const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
+            if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
+            rack.value.splice(idx, 0, letter === letter.toLowerCase() ? '?' : letter)
           }
+        }
 
-          return { rack, onDragStart, placed, word, result, validate }
-        },
-        template: `
-          <Grid @placed="placed" />
-          <div class="rack">
-            <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
-                 @dragstart="onDragStart($event, idx)">
-              {{ letter }}
-            </div>
-          </div>
-          <div class="validation">
-            <input v-model="word" placeholder="Mot à valider" />
-            <button @click="validate">Valider</button>
-            <p>{{ result }}</p>
-          </div>
+        function placed(payload) {
+          rack.value.splice(payload.index, 1)
+          if (payload.letter === '?') {
+            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+            let choice = prompt(`Choisissez une lettre pour le joker:\n${letters}`)
+            if (!choice) {
+              rack.value.splice(payload.index, 0, '?')
+              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+              return
+            }
+            choice = choice.toUpperCase()
+            if (!letters.includes(choice)) {
+              rack.value.splice(payload.index, 0, '?')
+              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+              return
+            }
+            gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase(), false)
+            placements.value.push({ row: payload.row, col: payload.col, letter: choice, blank: true })
+          } else {
+            placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter, blank: false })
+          }
+        }
+
+        function removed(payload) {
+          const { row, col, letter } = payload
+          const i = placements.value.findIndex(p => p.row === row && p.col === col)
+          if (i !== -1) placements.value.splice(i, 1)
+          rack.value.push(letter === letter.toLowerCase() ? '?' : letter)
+        }
+
+        function moved(payload) {
+          const { fromRow, fromCol, toRow, toCol } = payload
+          const i = placements.value.findIndex(p => p.row === fromRow && p.col === fromCol)
+          if (i !== -1) {
+            placements.value[i].row = toRow
+            placements.value[i].col = toCol
+          }
+        }
+
+        function clearMove() {
+          gameRef.value.clearAll(placements.value)
+          placements.value.forEach(p => rack.value.push(p.blank ? '?' : p.letter))
+          placements.value = []
+        }
+
+        function shuffleRack() {
+          for (let i = rack.value.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+              ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
+          }
+        }
+
+        async function play() {
+          if (placements.value.length === 0) return
+          const res = await fetch(
+            `http://localhost:8000/games/${currentGame.value.id}/play`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                player_id: currentGame.value.player_id,
+                placements: placements.value
+              })
+            }
+          )
+          if (!res.ok) {
+            const err = await res.json()
+            result.value = err.detail || 'Coup invalide'
+            return
+          }
+          const data = await res.json()
+          result.value = `Score : ${data.score}`
+          gameRef.value.lockTiles(placements.value)
+          placements.value = []
+          if (data.bot_move) {
+            data.bot_move.forEach(([row, col, letter, blank]) => {
+              gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+            })
+          }
+          const stateRes = await fetch(
+            `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+          )
+          const stateData = await stateRes.json()
+          rack.value = stateData.rack
+          score.value = stateData.scores[currentGame.value.player_id] || 0
+          const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+          score_adversaire.value = advId ? stateData.scores[advId] : 0
+        }
+
+        function passTurn() {
+          clearMove()
+          result.value = 'Tour passé'
+        }
+
+        if (userId.value) {
+          loadGames()
+        }
+
+        return {
+          view,
+          userId,
+          ongoingGames,
+          finishedGames,
+          newGameFriend,
+          newGameBot,
+          resumeGame,
+          finishGame,
+          goHome,
+          rack,
+          onDragStart,
+          placed,
+          play,
+          result,
+          LETTER_POINTS,
+          onRackDrop,
+          gameRef,
+          removed,
+          clearMove,
+          shuffleRack,
+          passTurn,
+          moved,
+          onAuth,
+          score,
+          score_adversaire
+        }
+      },
+      template: `
+        <Login v-if="!userId" @auth="onAuth" />
+        <Home v-else-if="view==='home'"
+              :ongoing-games="ongoingGames"
+              :finished-games="finishedGames"
+              @new-game-friend="newGameFriend"
+              @new-game-bot="newGameBot"
+              @resume="resumeGame"
+              @navigate="view=$event" />
+          <Game v-else-if="view==='game'"
+                ref="gameRef"
+                :rack="rack"
+                :result="result"
+                :score="score"
+                :score_adversaire="score_adversaire"
+                :letter-points="LETTER_POINTS"
+                @home="goHome"
+                @finish="finishGame"
+                @placed="placed"
+                @removed="removed"
+                @moved="moved"
+                @rack-drop="onRackDrop"
+                @drag-start="onDragStart"
+                @play="play"
+                @clear="clearMove"
+                @shuffle="shuffleRack"
+                @pass="passTurn" />
+          <Profile v-else-if="view==='profile'" @back="view='home'" />
+          <Settings v-else-if="view==='settings'" @back="view='home'" />
         `
-      }
+    }
 
-      Vue.createApp(App).mount('#app')
-    </script>
-  </body>
+    Vue.createApp(App).mount('#app')
+  </script>
+</body>
+
 </html>
