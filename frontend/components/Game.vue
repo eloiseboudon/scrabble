@@ -21,21 +21,16 @@
         Toi {{ score }} <br>
         Adversaire {{ score_adversaire }}
       </div>
-
       <button @click="$emit('clear')">
-        <!-- icône -->
         Effacer
       </button>
       <button @click="$emit('shuffle')">
-        <!-- icône -->
         Mélanger
       </button>
       <button v-if="tile" @click="$emit('play')">
-        <!-- icône -->
         Jouer
       </button>
       <button v-if="!tile" @click="$emit('pass')">
-        <!-- icône -->
         Passer
       </button>
     </div>

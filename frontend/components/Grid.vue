@@ -5,8 +5,8 @@
         <div v-for="(cell, colIndex) in row" :key="colIndex" class="cell"
           :class="[board[rowIndex][colIndex], { 'has-letter': !!cell }]" @dragover.prevent
           @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
-          :draggable="!!cell && !locked[rowIndex][colIndex]"
-          @dragstart="onDragStart($event, rowIndex, colIndex)">
+          :draggable="!!cell && !locked[rowIndex][colIndex]" @dragstart="onDragStart($event, rowIndex, colIndex)"
+          :data-row="rowIndex" :data-col="colIndex">
           <template v-if="cell">
             <span class="letter">{{ cell.toUpperCase() }}</span>
             <span class="points">{{ cell === cell.toLowerCase() ? 0 : letterPoints[cell.toUpperCase()] }}</span>
@@ -61,7 +61,14 @@ function onDrop(e, row, col) {
     if (data.source === 'rack' && data.letter) {
       grid.value[row][col] = data.letter
       locked.value[row][col] = false
-      emit('placed', { index: data.index, row, col, letter: data.letter })
+      emit('placed', {
+        row,
+        col,
+        letter: data.letter,
+        from: 'rack',
+        rackIndex: data.index,
+        ...(data.letter === '*' ? { blank: true } : {})
+      })
     } else if (data.source === 'board') {
       if (locked.value[data.row][data.col]) return
       const letter = grid.value[data.row][data.col]
@@ -70,7 +77,7 @@ function onDrop(e, row, col) {
       locked.value[data.row][data.col] = false
       grid.value[row][col] = letter
       locked.value[row][col] = false
-      emit('moved', { fromRow: data.row, fromCol: data.col, toRow: row, toCol: col, letter })
+      emit('moved', { from: { row: data.row, col: data.col }, to: { row, col }, letter })
     }
   } catch { }
 }
