@@ -70,8 +70,8 @@
 ## 🧪 6. Tests
 - [ ] Tests unitaires
 - [ ] Tests d'intégration
-- [ ] Tests backend
-- [ ] Tests frontend
+- [x] Tests backend
+- [x] Tests frontend
 
 ## 📱 7. Interface Mobile
 - [x] Adapter le frontend Vue en responsive (taille mobile)
