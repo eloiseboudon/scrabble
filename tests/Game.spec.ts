@@ -35,10 +35,20 @@ describe('Game.vue', () => {
         expect(w.emitted('pass')).toBeTruthy()
     })
 
-    it('1 tile on game', async () => {
-        const w = mount(Game, { props: { rack: ['A'], letterPoints: { A: 1 } } })
+    it('existing locked tile still shows Passer', async () => {
+        const w = mount(Game, { props: { rack: [], letterPoints: { A: 1 } } })
             ; (w.vm as any).setTile(7, 7, 'A', true)
+        await nextTick()
+        const jouerBtn = w.findAll('button').find(b => b.text().trim() === 'Jouer')
+        expect(jouerBtn?.element.style.display).toBe('none')
+        await getByText(w, 'button', 'Passer').trigger('click')
+        expect(w.emitted('pass')).toBeTruthy()
+    })
 
+    it('placing a new tile shows Jouer', async () => {
+        const w = mount(Game, { props: { rack: ['A'], letterPoints: { A: 1 } } })
+        w.findComponent({ name: 'Grid' }).vm.$emit('placed', { row: 7, col: 7, letter: 'A' })
+        await nextTick()
         await getByText(w, 'button', 'Jouer').trigger('click')
         expect(w.emitted('play')).toBeTruthy()
     })

@@ -69,7 +69,7 @@ function handleRemoved(payload) {
 // ✅ Expose des wrappers stables
 function setTile(r, c, l, lock = true) {
   gridRef.value?.setTile(r, c, l, lock)
-  placements.value++
+  if (!lock) placements.value++
 }
 
 function takeBack(r, c) {
@@ -83,7 +83,10 @@ function clearAll(tiles) {
   placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
 }
 
-function lockTiles(tiles) { gridRef.value?.lockTiles(tiles) }
+function lockTiles(tiles) {
+  gridRef.value?.lockTiles(tiles)
+  placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
+}
 
 defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
 </script>
