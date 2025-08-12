@@ -59,6 +59,24 @@
           finishedGames.value = data.finished
         }
 
+        async function checkAuth() {
+          if (userId.value) {
+            loadGames()
+            return
+          }
+          try {
+            const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
+            if (res.ok) {
+              const data = await res.json()
+              userId.value = data.user_id
+              localStorage.setItem('userId', data.user_id)
+              loadGames()
+            }
+          } catch (err) {
+            // ignore
+          }
+        }
+
         function onAuth(id) {
           userId.value = id
           localStorage.setItem('userId', id)
@@ -294,9 +312,7 @@
           result.value = 'Tour passé'
         }
 
-        if (userId.value) {
-          loadGames()
-        }
+        checkAuth()
 
         return {
           view,

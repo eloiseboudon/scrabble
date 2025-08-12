@@ -409,53 +409,77 @@ async def google_authorize(request: Request):
 
 @router.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
+    """Handle Google OAuth callback."""
+
     if "google" not in oauth:
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     try:
-        token = await oauth.google.authorize_access_token(request)  # exchanges 'code'
-    except OAuthError as e:
+        token = await oauth.google.authorize_access_token(request)
+    except OAuthError as e:  # pragma: no cover - network errors
         raise HTTPException(status_code=400, detail=f"OAuth error: {e.error}") from e
 
-    # Get user info (via ID token or userinfo endpoint)
+    # Retrieve userinfo either from the token payload or via ID token
     userinfo = token.get("userinfo")
     if not userinfo:
-        # Try parsing ID token
         try:
             userinfo = await oauth.google.parse_id_token(request, token)
-        except Exception:
+        except Exception:  # pragma: no cover - defensive
             pass
-    if not userinfo or "email" not in userinfo:
+    if not userinfo or "email" not in userinfo or "sub" not in userinfo:
         raise HTTPException(status_code=400, detail="Unable to fetch Google user info")
 
     email = userinfo["email"].lower()
+    subject = userinfo["sub"]
     display_name = userinfo.get("name")
+    avatar_url = userinfo.get("picture")
 
-    # Find or create user
-    user = db.query(models.User).filter_by(username=email).first()
-    if not user:
-        # Create a passwordless user (OAuth only)
-        user = models.User(
-            username=email, hashed_password=pwd_context.hash(os.urandom(16).hex())
+    # 1) If OAuth account already linked, use its user
+    account = (
+        db.query(models.OAuthAccount)
+        .filter_by(provider="google", subject=subject)
+        .first()
+    )
+    if account:
+        user = account.user
+    else:
+        # 2) Otherwise, try finding existing user by email
+        user = db.query(models.User).filter_by(username=email).first()
+        if not user:
+            # 3) Create a new passwordless user
+            user = models.User(
+                username=email, hashed_password=pwd_context.hash(os.urandom(16).hex())
+            )
+            if hasattr(user, "is_active") and getattr(user, "is_active") is None:
+                user.is_active = True
+            if hasattr(user, "is_verified"):
+                try:
+                    user.is_verified = True
+                except Exception:  # pragma: no cover - model may not have field
+                    pass
+            if hasattr(user, "display_name") and display_name:
+                try:
+                    user.display_name = display_name
+                except Exception:  # pragma: no cover
+                    pass
+            if hasattr(user, "avatar_url") and avatar_url:
+                try:
+                    user.avatar_url = avatar_url
+                except Exception:  # pragma: no cover
+                    pass
+            if hasattr(user, "created_at") and getattr(user, "created_at") is None:
+                user.created_at = _utcnow()
+            if hasattr(user, "updated_at"):
+                user.updated_at = _utcnow()
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        # Link OAuth account to user
+        account = models.OAuthAccount(
+            user_id=user.id, provider="google", subject=subject
         )
-        if hasattr(user, "is_active") and getattr(user, "is_active") is None:
-            user.is_active = True
-        if hasattr(user, "is_verified"):
-            try:
-                user.is_verified = True
-            except Exception:
-                pass
-        if hasattr(user, "display_name") and display_name:
-            try:
-                user.display_name = display_name
-            except Exception:
-                pass
-        if hasattr(user, "created_at") and getattr(user, "created_at") is None:
-            user.created_at = _utcnow()
-        if hasattr(user, "updated_at"):
-            user.updated_at = _utcnow()
-        db.add(user)
+        db.add(account)
         db.commit()
-        db.refresh(user)
 
     # Login: set cookies (access + refresh rotation)
     access = create_token(

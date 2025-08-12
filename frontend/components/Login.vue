@@ -6,6 +6,7 @@
       <input v-model="password" type="password" placeholder="Mot de passe" required />
       <button type="submit">{{ isRegister ? "S'inscrire" : 'Se connecter' }}</button>
     </form>
+    <button class="google" @click="loginGoogle">Connexion avec Google</button>
     <p>
       <a href="#" @click.prevent="toggle">
         {{ isRegister ? 'Déjà un compte ? Connectez-vous' : 'Pas de compte ? Inscrivez-vous' }}
@@ -31,6 +32,7 @@ async function submit() {
   const res = await fetch(`http://localhost:8000/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
     body: JSON.stringify({ username: username.value, password: password.value })
   })
   if (!res.ok) {
@@ -45,6 +47,10 @@ async function submit() {
 function toggle() {
   isRegister.value = !isRegister.value
   error.value = ''
+}
+
+function loginGoogle() {
+  window.location.href = 'http://localhost:8000/auth/google/authorize'
 }
 </script>
 
@@ -65,5 +71,9 @@ function toggle() {
 
 .error {
   color: red;
+}
+
+.google {
+  margin-top: 0.5rem;
 }
 </style>
