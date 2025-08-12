@@ -428,7 +428,12 @@ def logout_endpoint(
 @router.get("/auth/me")
 def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse:
     user = get_current_user(request, db)
-    return UserResponse(user_id=user.id, email=user.username)
+    return UserResponse(
+        user_id=user.id,
+        email=user.username,
+        display_name=user.display_name,
+        avatar_url=user.avatar_url,
+    )
 
 
 # =========================================================

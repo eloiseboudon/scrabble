@@ -5,7 +5,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from .. import game as game_module, models
+from .. import game as game_module
+from .. import models
 from ..database import get_db
 from ..game import draw_tiles, load_game_state, place_tiles, reset_game
 
@@ -88,7 +89,10 @@ class GameState(BaseModel):
     passes_in_a_row: int
     phase: str
 
-def _state_response(game: models.Game, players: list[models.GamePlayer]) -> dict[str, object]:
+
+def _state_response(
+    game: models.Game, players: list[models.GamePlayer]
+) -> dict[str, object]:
     """Build a state dictionary with common game fields."""
     return {
         "next_player_id": game.next_player_id if game.next_player_id is not None else 0,
@@ -186,8 +190,11 @@ def _maybe_play_bot(
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     return players, bot_move, bot_score
 
+
 @router.post("/start")
-def start(req: StartRequest, db: Session = Depends(get_db)) -> dict[str, int | list[str]]:
+def start(
+    req: StartRequest, db: Session = Depends(get_db)
+) -> dict[str, int | list[str]]:
     """Start a new game and return identifiers and an initial rack."""
     reset_game()
     game = models.Game(max_players=req.max_players, vs_computer=req.vs_computer)
@@ -241,9 +248,7 @@ def get_game(game_id: int, player_id: int, db: Session = Depends(get_db)) -> Gam
         raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=game_id, id=player_id)
-        .first()
+        db.query(models.GamePlayer).filter_by(game_id=game_id, id=player_id).first()
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -268,7 +273,9 @@ def draw(n: int, player_id: int, db: Session = Depends(get_db)) -> dict[str, lis
 
 
 @router.post("/games")
-def create_game(req: CreateGameRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+def create_game(
+    req: CreateGameRequest, db: Session = Depends(get_db)
+) -> dict[str, int]:
     """Create a new game and return its identifier."""
     game = models.Game(max_players=req.max_players, vs_computer=req.vs_computer)
     db.add(game)
@@ -277,7 +284,9 @@ def create_game(req: CreateGameRequest, db: Session = Depends(get_db)) -> dict[s
 
 
 @router.post("/games/{game_id}/join")
-def join_game(game_id: int, req: JoinGameRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+def join_game(
+    game_id: int, req: JoinGameRequest, db: Session = Depends(get_db)
+) -> dict[str, int]:
     """Join an existing game and return the created player identifier."""
     game = db.get(models.Game, game_id)
     if game is None:
@@ -296,6 +305,7 @@ def join_game(game_id: int, req: JoinGameRequest, db: Session = Depends(get_db))
     db.add(player)
     db.commit()
     return {"player_id": player.id}
+
 
 @router.post("/games/{game_id}/start")
 def start_game(
@@ -327,7 +337,9 @@ def start_game(
 
 
 @router.post("/games/{game_id}/play")
-def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> dict[str, object]:
+def play_move(
+    game_id: int, req: MoveRequest, db: Session = Depends(get_db)
+) -> dict[str, object]:
     """Play a move in the specified game and return updated state."""
     game = db.get(models.Game, game_id)
     if game is None:
@@ -338,7 +350,9 @@ def play_move(game_id: int, req: MoveRequest, db: Session = Depends(get_db)) -> 
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     try:
-        score = place_tiles([(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements])
+        score = place_tiles(
+            [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
+        )
     except ValueError as exc:  # pragma: no cover - validation passthrough
         raise HTTPException(status_code=400, detail=str(exc))
     for p in req.placements:
@@ -441,9 +455,7 @@ def get_game_state(
         raise HTTPException(status_code=404, detail="Game not found")
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     player = (
-        db.query(models.GamePlayer)
-        .filter_by(game_id=game_id, id=player_id)
-        .first()
+        db.query(models.GamePlayer).filter_by(game_id=game_id, id=player_id).first()
     )
     if player is None:
         raise HTTPException(status_code=404, detail="Player not found")
@@ -459,3 +471,15 @@ def get_game_state(
         passes_in_a_row=state["passes_in_a_row"],
         phase=state["phase"],
     )
+
+
+@router.get("/games/user/{user_id}")
+def game_info_endpoint(user_id: int, db: Session = Depends(get_db)) -> dict:
+    gamesplayers = db.query(models.GamePlayer).filter_by(user_id=user_id).all()
+
+    return {
+        "games_count": len(gamesplayers),
+        "best_score": 0,
+        "best_word": "",
+        "win_percentage": 0,
+    }
