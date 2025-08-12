@@ -1,31 +1,35 @@
 """FastAPI backend for Scrabble application."""
 
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
-from .api import auth, games, health
+env_path = Path(__file__).resolve().parents[1] / ".env"
+load_dotenv(dotenv_path=env_path)
 
-load_dotenv()
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_change_me")
 
 app = FastAPI()
 
+# 2) CORS en dev
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[FRONTEND_URL],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_change_me")
+# 3) SessionMiddleware requis pour Authlib (Google OAuth)
+app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Session middleware required for OAuth (stores auth state)
-app.add_middleware(SessionMiddleware, secret_key=auth.SECRET_KEY)
-
+# 4) Importer les routers APRÈS le chargement du .env et les middlewares
+from .api import auth, games, health  # noqa: E402
 
 app.include_router(health.router)
 app.include_router(auth.router)

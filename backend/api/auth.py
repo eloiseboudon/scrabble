@@ -59,12 +59,15 @@ def ensure_google_registered() -> bool:
     """Enregistre Google au runtime si les env vars existent."""
     if _is_google_registered():
         return True
-    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+    # <-- Relire l'env ICI (et ne pas se fier aux variables de module)
+    client_id = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
+    if not client_id or not client_secret:
         return False
     oauth.register(
         name="google",
-        client_id=GOOGLE_CLIENT_ID,
-        client_secret=GOOGLE_CLIENT_SECRET,
+        client_id=client_id,
+        client_secret=client_secret,
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
         client_kwargs={"scope": "openid email profile"},
     )
@@ -443,25 +446,66 @@ async def google_authorize(request: Request):
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     if not ensure_google_registered():
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
+
+    # 1) Échange code -> token
     try:
         token = await oauth.google.authorize_access_token(request)
     except OAuthError as e:
         raise HTTPException(status_code=400, detail=f"OAuth error: {e.error}") from e
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"OAuth exchange failed: {e}"
+        ) from e
 
-    # Récupération userinfo
-    userinfo = token.get("userinfo")
+    # 2) Tenter userinfo via Authlib (userinfo endpoint découvert)
+    userinfo = None
+    try:
+        resp = await oauth.google.get("userinfo", token=token)
+        if resp is not None and getattr(resp, "status_code", None) == 200:
+            data = resp.json()
+            if isinstance(data, dict) and "email" in data:
+                userinfo = data
+    except Exception:
+        pass
+
+    # 3) Fallback 1: appel direct à l’endpoint OIDC standard
+    if not userinfo:
+        import httpx
+
+        access_token = token.get("access_token")
+        if access_token:
+            for url in (
+                "https://openidconnect.googleapis.com/v1/userinfo",
+                "https://www.googleapis.com/oauth2/v3/userinfo",
+            ):
+                try:
+                    async with httpx.AsyncClient(timeout=10) as client:
+                        r = await client.get(
+                            url, headers={"Authorization": f"Bearer {access_token}"}
+                        )
+                    if r.status_code == 200 and "email" in r.json():
+                        userinfo = r.json()
+                        break
+                except Exception:
+                    continue
+
+    # 4) Fallback 2: décoder l’ID token pour extraire l’email (si présent)
     if not userinfo:
         try:
-            userinfo = await oauth.google.parse_id_token(request, token)
+            parsed = await oauth.google.parse_id_token(request, token)
+            if isinstance(parsed, dict) and "email" in parsed:
+                userinfo = parsed
         except Exception:
             pass
+
     if not userinfo or "email" not in userinfo:
+        # Affiche les infos utiles pour debug
         raise HTTPException(status_code=400, detail="Unable to fetch Google user info")
 
     email = userinfo["email"].lower()
     display_name = userinfo.get("name")
 
-    # Find or create user
+    # 5) find-or-create user
     user = db.query(models.User).filter_by(username=email).first()
     if not user:
         user = models.User(
@@ -481,12 +525,77 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
-    # Set cookies et redirige vers le front
+    # 6) Cookies + redirect front
     access = create_token(
         {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    refresh = _issue_refresh(db, user.id)
+    refresh = (
+        _issue_refresh(db, user.id)
+        if "_issue_refresh" in globals()
+        else create_token(
+            {"sub": str(user.id), "type": "refresh"},
+            timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        )
+    )
     response = RedirectResponse(url=FRONTEND_URL)
     set_access_cookie(response, access)
     set_refresh_cookie(response, refresh)
     return response
+
+
+# ---- Route DEBUG (à retirer en prod) ----
+@router.get("/auth/google/callback-debug")
+async def google_callback_debug(request: Request):
+    if not ensure_google_registered():
+        return {"error": "Google OAuth not configured"}
+
+    data = {"stage": "start"}
+    try:
+        token = await oauth.google.authorize_access_token(request)
+        data["token_keys"] = list(token.keys())
+        data["has_access_token"] = bool(token.get("access_token"))
+        data["has_id_token"] = bool(token.get("id_token"))
+
+        # Essai 1 : userinfo via Authlib
+        try:
+            resp = await oauth.google.get("userinfo", token=token)
+            data["userinfo_status"] = getattr(resp, "status_code", None)
+            data["userinfo_body"] = (
+                resp.json() if getattr(resp, "status_code", None) == 200 else resp.text
+            )
+        except Exception as e:
+            data["userinfo_error"] = str(e)
+
+        # Essai 2 : userinfo via httpx + Authorization: Bearer
+        try:
+            import httpx
+
+            access_token = token.get("access_token")
+            if access_token:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    r = await client.get(
+                        "https://openidconnect.googleapis.com/v1/userinfo",
+                        headers={"Authorization": f"Bearer {access_token}"},
+                    )
+                data["userinfo_direct_status"] = r.status_code
+                data["userinfo_direct_body"] = (
+                    r.json() if r.status_code == 200 else r.text
+                )
+        except Exception as e:
+            data["userinfo_direct_error"] = str(e)
+
+        # Essai 3 : parse_id_token
+        try:
+            parsed = await oauth.google.parse_id_token(request, token)
+            data["parsed_id_token_keys"] = (
+                list(parsed.keys())
+                if isinstance(parsed, dict)
+                else type(parsed).__name__
+            )
+        except Exception as e:
+            data["parse_id_token_error"] = str(e)
+
+    except Exception as e:
+        data["fatal_error"] = str(e)
+
+    return data

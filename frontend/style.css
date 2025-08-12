@@ -89,32 +89,6 @@
   --grid-border-width: clamp(1px, 0.2vw, 2px);
 }
 
-.game,
-.grid,
-.rack {
-  touch-action: none;
-  /* autorise preventDefault sur touchmove */
-}
-
-.tile {
-  -webkit-user-drag: none;
-  user-select: none;
-  touch-action: none;
-}
-
-.tile.ghost {
-  opacity: 0.85;
-  padding: 6px 8px;
-  border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-  background: #fff;
-}
-
-.grid-cell {
-  position: relative;
-}
-
-
 * {
   margin: 0;
   padding: 0;
@@ -290,7 +264,7 @@ button:active,
   width: 35px;
   height: 35px;
   background: var(--color-primary);
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -321,8 +295,8 @@ button:active,
   font-size: 0.6rem;
   font-weight: 600;
   color: var(--color-text-secondary);
-  /* background: rgba(255, 255, 255, 0.9); */
-  /* border-radius: 50%; */
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
   width: 12px;
   height: 12px;
   display: flex;
