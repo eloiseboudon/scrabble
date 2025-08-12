@@ -190,7 +190,10 @@ def _validate_refresh(db: Session, token: str) -> int:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked"
         )
-    if rt.expires_at <= _utcnow():
+    expires_at = rt.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= _utcnow():
         # Soft revoke expired
         rt.revoked = True
         rt.revoked_at = _utcnow()
@@ -304,7 +307,9 @@ def login(req: AuthRequest, db: Session) -> int:
     return user.id
 
 
-def me(email_or_username: str, db: Session | None = None):
+def me(email_or_username: str, db: Session | None = None) -> UserResponse:
+    """Lookup a user by email/username and return basic info."""
+
     own_session = False
     if db is None:
         db = SessionLocal()
@@ -313,7 +318,7 @@ def me(email_or_username: str, db: Session | None = None):
         user = db.query(models.User).filter_by(username=email_or_username).first()
         if user is None:
             raise HTTPException(status_code=404, detail="user_not_found")
-        return {"user_id": user.id, "email": user.username}
+        return UserResponse(user_id=user.id, email=user.username)
     finally:
         if own_session:
             db.close()
@@ -387,10 +392,10 @@ def logout_endpoint(
     return {"detail": "logged_out"}
 
 
-@router.get("/auth/me")
-def me_endpoint(request: Request, db: Session = Depends(get_db)):
+@router.get("/auth/me", response_model=UserResponse)
+def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse:
     user = get_current_user(request, db)
-    return {"user_id": user.id, "email": user.username}
+    return UserResponse(user_id=user.id, email=user.username)
 
 
 # ================== Google OAuth (Authlib) ==================
