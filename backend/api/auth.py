@@ -401,7 +401,7 @@ def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse
 # ================== Google OAuth (Authlib) ==================
 @router.get("/auth/google/authorize")
 async def google_authorize(request: Request):
-    if "google" not in oauth:
+    if "google" not in oauth._clients:
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     redirect_uri = f"{BACKEND_URL}/auth/google/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
@@ -411,7 +411,7 @@ async def google_authorize(request: Request):
 async def google_callback(request: Request, db: Session = Depends(get_db)):
     """Handle Google OAuth callback."""
 
-    if "google" not in oauth:
+    if "google" not in oauth._clients:
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     try:
         token = await oauth.google.authorize_access_token(request)
