@@ -13,8 +13,12 @@ os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 from backend.database import Base, SessionLocal, engine  # type: ignore
 from backend import models
 from fastapi import HTTPException
-from backend.main import (
+from backend.api.users import (
     AuthRequest,
+    get_user_by_username,
+    register,
+)
+from backend.api.games import (
     ChallengeRequest,
     CreateGameRequest,
     ExchangeRequest,
@@ -22,7 +26,6 @@ from backend.main import (
     MoveRequest,
     PassRequest,
     ResignRequest,
-    get_user_by_username,
     challenge_move,
     create_game,
     exchange_tiles,
@@ -30,10 +33,9 @@ from backend.main import (
     join_game,
     pass_turn,
     play_move,
-    register,
     resign_game,
     start_game,
-)  # type: ignore
+)
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)

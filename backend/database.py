@@ -1,7 +1,9 @@
 import os
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
+
+from .models import Base
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", "postgresql+psycopg://eloise@localhost:5432/scrabble"
@@ -9,7 +11,6 @@ DATABASE_URL = os.getenv(
 
 engine = create_engine(DATABASE_URL, future=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-Base = declarative_base()
 
 
 def get_db():

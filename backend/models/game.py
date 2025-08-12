@@ -1,43 +1,9 @@
 from datetime import datetime, timezone
 from typing import List
-from sqlalchemy import String
+from sqlalchemy import CheckConstraint, ForeignKey, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from fastapi_users_db_sqlalchemy import (
-    SQLAlchemyBaseOAuthAccountTableUUID,
-    SQLAlchemyBaseUserTableUUID,
-)
-from sqlalchemy import CheckConstraint, ForeignKey, String, func
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
-
-
-# Create a base class for declarative models
-class Base(DeclarativeBase):
-    pass
-
-
-class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
-
-class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
-    __tablename__ = "oauth_accounts"
-
-
-class User(SQLAlchemyBaseUserTableUUID, TimestampMixin, Base):
-    __tablename__ = "users"
-
-    display_name: Mapped[str | None] = mapped_column(String(120))
-    avatar_url: Mapped[str | None] = mapped_column(String(512))
-    role: Mapped[str] = mapped_column(String(30), default="player", nullable=False)
-
-    oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
-        "OAuthAccount", cascade="all, delete-orphan"
-    )
+from .base import Base
 
 
 class Game(Base):
@@ -54,9 +20,7 @@ class Game(Base):
     started: Mapped[bool] = mapped_column(default=False, nullable=False)
     next_player_id: Mapped[int | None] = mapped_column(nullable=True)
     passes_in_a_row: Mapped[int] = mapped_column(default=0, nullable=False)
-    phase: Mapped[str] = mapped_column(
-        String, default="waiting_players", nullable=False
-    )
+    phase: Mapped[str] = mapped_column(String, default="waiting_players", nullable=False)
 
     __table_args__ = (
         CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),
