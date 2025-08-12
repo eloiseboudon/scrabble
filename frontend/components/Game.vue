@@ -9,8 +9,16 @@
       @moved="emit('moved', $event)" />
 
     <div class="rack" @dragover.prevent @drop="$emit('rack-drop', $event, rack.length)">
-      <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="false"
-        @touchstart.prevent="onTouchStart(idx, $event)">
+      <div
+        v-for="(letter, idx) in rack"
+        :key="idx"
+        class="tile"
+        draggable="true"
+        @dragstart="$emit('drag-start', $event, idx)"
+        @dragover.prevent
+        @drop="$emit('rack-drop', $event, idx)"
+        @touchstart.prevent="onTouchStart(idx, $event)"
+      >
         <span class="letter">{{ letter }}</span>
         <span class="points">{{ letterPoints[letter] }}</span>
       </div>
@@ -74,7 +82,12 @@ function handleRemoved(payload) {
 // DÉMARRER DRAG TACTILE DEPUIS LE RACK
 function onTouchStart(idx, ev) {
   const touch = ev.touches?.[0]
-  if (!touch) return
+  if (!touch) {
+    if (typeof window !== 'undefined') {
+      window.touchDragData = { source: 'rack', letter: props.rack[idx], index: idx }
+    }
+    return
+  }
   dragging = { idx, letter: props.rack[idx] }
   createGhost(touch.clientX, touch.clientY, props.rack[idx])
 
@@ -98,7 +111,7 @@ function onTouchEnd(ev) {
   const el = document.elementFromPoint(t.clientX, t.clientY)
 
   // 1) Sur une cellule de la grille ?
-  const cell = el?.closest?.('.grid-cell[data-row][data-col]')
+  const cell = el?.closest?.('.cell[data-row][data-col]')
   if (cell && dragging) {
     const row = Number(cell.dataset.row)
     const col = Number(cell.dataset.col)
@@ -149,6 +162,7 @@ function cleanupDrag() {
   }
   document.removeEventListener('touchmove', onTouchMove)
   document.removeEventListener('touchend', onTouchEnd)
+  if (typeof window !== 'undefined') window.touchDragData = null
 }
 
 // --- wrappers existants exposés
