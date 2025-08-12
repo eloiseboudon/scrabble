@@ -5,19 +5,16 @@ import pathlib
 import random
 import sys
 
+# Add project root to path
 sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 
 # Use SQLite database for tests
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
-from backend.database import Base, SessionLocal, engine  # type: ignore
-from backend import models
 from fastapi import HTTPException
-from backend.api.users import (
-    AuthRequest,
-    get_user_by_username,
-    register,
-)
+
+from backend import models
+from backend.api.auth import AuthRequest, me, register
 from backend.api.games import (
     ChallengeRequest,
     CreateGameRequest,
@@ -36,7 +33,9 @@ from backend.api.games import (
     resign_game,
     start_game,
 )
+from backend.database import Base, SessionLocal, engine  # type: ignore
 
+# Setup test database
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
 
@@ -65,9 +64,9 @@ def test_game_lifecycle() -> None:
         {"row": 7, "col": 9, "letter": "U", "blank": False},
     ]
     with SessionLocal() as db:
-        score = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)[
-            "score"
-        ]
+        score = play_move(
+            game_id, MoveRequest(player_id=p1, placements=placements), db=db
+        )["score"]
     assert score == 12
 
     with SessionLocal() as db:
@@ -95,9 +94,9 @@ def test_blank_tile_scores_zero() -> None:
         {"row": 7, "col": 9, "letter": "U", "blank": False},
     ]
     with SessionLocal() as db:
-        score = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)[
-            "score"
-        ]
+        score = play_move(
+            game_id, MoveRequest(player_id=p1, placements=placements), db=db
+        )["score"]
     assert score == 4
 
 
@@ -123,16 +122,16 @@ def test_exchange_pass_resign() -> None:
 
 def test_user_lookup() -> None:
     with SessionLocal() as db:
-        user_id = register(AuthRequest(username="alice", password="pwd"), db=db)[
-            "user_id"
-        ]
+        user_id = register(
+            AuthRequest(email="alice@example.com", password="pwd"), db=db
+        )
     with SessionLocal() as db:
-        res = get_user_by_username("alice", db=db)
+        res = me("alice@example.com")
     assert res.user_id == user_id
 
     with SessionLocal() as db:
         try:
-            get_user_by_username("unknown", db=db)
+            me("unknown")
         except HTTPException as exc:
             assert exc.status_code == 404
         else:  # pragma: no cover - should not reach

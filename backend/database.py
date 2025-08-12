@@ -10,6 +10,8 @@ DATABASE_URL = os.getenv(
 )
 
 engine = create_engine(DATABASE_URL, future=True)
+if DATABASE_URL.startswith("sqlite"):
+    Base.metadata.create_all(engine)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
 
