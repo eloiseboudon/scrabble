@@ -1,10 +1,15 @@
 """FastAPI backend for Scrabble application."""
 
+import os
+
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 
 from .api import auth, games, health
+
+load_dotenv()
 
 app = FastAPI()
 
@@ -16,8 +21,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_change_me")
+
 # Session middleware required for OAuth (stores auth state)
 app.add_middleware(SessionMiddleware, secret_key=auth.SECRET_KEY)
+
 
 app.include_router(health.router)
 app.include_router(auth.router)
