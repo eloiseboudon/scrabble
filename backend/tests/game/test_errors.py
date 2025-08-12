@@ -10,12 +10,8 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from fastapi import HTTPException
-from backend.database import Base, SessionLocal, engine  # type: ignore
-from backend.api.users import (
-    AuthRequest,
-    login,
-    register,
-)
+
+from backend.api.auth import AuthRequest, login, register
 from backend.api.games import (
     CreateGameRequest,
     JoinGameRequest,
@@ -23,6 +19,7 @@ from backend.api.games import (
     join_game,
     start_game,
 )
+from backend.database import Base, SessionLocal, engine  # type: ignore
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
