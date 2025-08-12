@@ -84,6 +84,22 @@
           loadGames()
         }
 
+        async function logout() {
+          try {
+            await fetch('http://localhost:8000/auth/logout', {
+              method: 'POST',
+              credentials: 'include'
+            })
+          } catch (err) {
+            // ignore
+          }
+          localStorage.removeItem('userId')
+          userId.value = null
+          ongoingGames.value = []
+          finishedGames.value = []
+          view.value = 'home'
+        }
+
         async function newGameBot() {
           const resGame = await fetch('http://localhost:8000/games', {
             method: 'POST',
@@ -338,6 +354,7 @@
           passTurn,
           moved,
           onAuth,
+          logout,
           score,
           score_adversaire
         }
@@ -369,7 +386,7 @@
                 @clear="clearMove"
                 @shuffle="shuffleRack"
                 @pass="passTurn" />
-          <Profile v-else-if="view==='profile'" @back="view='home'" />
+          <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
           <Settings v-else-if="view==='settings'" @back="view='home'" />
         `
     }
