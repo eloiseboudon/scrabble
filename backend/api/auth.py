@@ -1,8 +1,7 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Optional, Tuple
 
-# Google OAuth (Authlib)
 from authlib.integrations.starlette_client import OAuth, OAuthError
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import RedirectResponse
@@ -14,30 +13,49 @@ from sqlalchemy.orm import Session
 from .. import models
 from ..database import SessionLocal, get_db
 
-# ================== Settings ==================
+# =========================================================
+# Settings (lit à partir de .env, avec compatibilité anciens noms)
+# =========================================================
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "15"))
-REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+
+ACCESS_TOKEN_EXPIRE_MINUTES = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES") or os.getenv("JWT_LIFETIME_MINUTES", "15")
+)
+REFRESH_TOKEN_EXPIRE_DAYS = int(
+    os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")
+    or os.getenv("JWT_REFRESH_LIFETIME_DAYS", "7")
+)
 
 ENV = os.getenv("ENV", "dev")  # 'dev' | 'prod'
-PROD_DOMAIN = os.getenv("PROD_DOMAIN", ".ton-domaine")
+# Préférence : COOKIE_DOMAIN (si fourni), sinon PROD_DOMAIN
+COOKIE_DOMAIN_ENV = os.getenv("COOKIE_DOMAIN", "").strip()
+PROD_DOMAIN = os.getenv("PROD_DOMAIN", "").strip()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # Google OAuth
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
-GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
 
-# ================== Security ==================
-# Prefer argon2; fallback to bcrypt if unavailable (install passlib[argon2])
+# =========================================================
+# Sécurité / hashing
+# =========================================================
+# Préfère argon2; fallback bcrypt si l'extra n'est pas installé
 pwd_context = CryptContext(schemes=["argon2", "bcrypt"], deprecated="auto")
 
 router = APIRouter()
 
-# Initialize OAuth (requires SessionMiddleware in main app)
+# OAuth (enregistrement lazy pour éviter les problèmes d'ordre de chargement)
 oauth = OAuth()
-if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
+
+
+def ensure_google_registered() -> bool:
+    """Enregistre Google au runtime si les env vars existent."""
+    if "google" in oauth:
+        return True
+    if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        return False
     oauth.register(
         name="google",
         client_id=GOOGLE_CLIENT_ID,
@@ -45,33 +63,25 @@ if GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET:
         server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
         client_kwargs={"scope": "openid email profile"},
     )
+    return True
 
 
-# ================== Schemas ==================
-class AuthRequest(BaseModel):
-    """Login/Register payload.
-    Accepts either username or email for convenience.
-    """
-
-    username: str | None = None
-    email: EmailStr | None = None
-    password: str
-
-    @property
-    def identifier(self) -> str:
-        if self.username:
-            return self.username
-        if self.email:
-            return str(self.email)
-        raise HTTPException(status_code=400, detail="Username or email required")
+@router.get("/auth/google/status")
+def google_status() -> dict:
+    ready_after_ensure = ensure_google_registered()
+    return {
+        "configured": "google" in oauth,
+        "ready_after_ensure": ready_after_ensure,
+        "has_client_id": bool(GOOGLE_CLIENT_ID),
+        "has_client_secret": bool(GOOGLE_CLIENT_SECRET),
+        "backend_url": BACKEND_URL,
+        "frontend_url": FRONTEND_URL,
+    }
 
 
-class UserResponse(BaseModel):
-    user_id: int
-    email: str  # here 'email' actually carries username for backward compat
-
-
-# ================== Cookie helpers ==================
+# =========================================================
+# Helpers cookies
+# =========================================================
 def _cookie_params() -> dict:
     secure = ENV == "prod"
     samesite = "none" if ENV == "prod" else "lax"
@@ -80,8 +90,10 @@ def _cookie_params() -> dict:
         "secure": secure,
         "samesite": samesite,
     }
-    if ENV == "prod":
-        params["domain"] = PROD_DOMAIN
+    # En dev : ne PAS mettre de domain pour localhost (meilleure compatibilité).
+    domain_to_use = COOKIE_DOMAIN_ENV or PROD_DOMAIN
+    if ENV == "prod" and domain_to_use and domain_to_use.lower() != "localhost":
+        params["domain"] = domain_to_use
     return params
 
 
@@ -109,14 +121,17 @@ def set_refresh_cookie(response: Response, token: str) -> None:
 
 def clear_cookies(response: Response) -> None:
     common = {"path": "/"}
-    if ENV == "prod":
-        common["domain"] = PROD_DOMAIN
+    domain_to_use = COOKIE_DOMAIN_ENV or PROD_DOMAIN
+    if ENV == "prod" and domain_to_use and domain_to_use.lower() != "localhost":
+        common["domain"] = domain_to_use
     response.delete_cookie("access_token", **common)
     response.delete_cookie("refresh_token", **common)
 
 
-# ================== JWT helpers ==================
-def _utcnow():
+# =========================================================
+# Helpers JWT
+# =========================================================
+def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
@@ -139,9 +154,11 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 
-# ================== Refresh Token Store (DB) ==================
+# =========================================================
+# Refresh tokens en base (rotation stricte)
+# models.RefreshToken requis (table: refresh_tokens)
+# =========================================================
 def _issue_refresh(db: Session, user_id: int) -> str:
-    # Create DB record
     rt = models.RefreshToken(
         user_id=user_id,
         revoked=False,
@@ -150,7 +167,7 @@ def _issue_refresh(db: Session, user_id: int) -> str:
     db.add(rt)
     db.commit()
     db.refresh(rt)
-    # Create signed token with jti
+    # Token signé avec jti (id de la table)
     token = create_token(
         {"sub": str(user_id), "type": "refresh"},
         timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
@@ -161,26 +178,26 @@ def _issue_refresh(db: Session, user_id: int) -> str:
 
 def _revoke_refresh(db: Session, jti: int) -> None:
     obj = db.get(models.RefreshToken, jti)
-    if obj:
+    if obj and not obj.revoked:
         obj.revoked = True
         obj.revoked_at = _utcnow()
         db.add(obj)
         db.commit()
 
 
-def _validate_refresh(db: Session, token: str) -> int:
+def _validate_refresh(db: Session, token: str) -> Tuple[int, int]:
+    """Retourne (user_id, jti) si le refresh est valide, sinon lève HTTP 401."""
     try:
         payload = decode_token(token)
         if payload.get("type") != "refresh":
             raise JWTError("Invalid token type")
         user_id = int(payload.get("sub"))
         jti = int(payload.get("jti"))
-    except Exception as exc:  # includes ValueError, JWTError
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
         ) from exc
 
-    # Check DB state
     rt = db.get(models.RefreshToken, jti)
     if not rt or rt.user_id != user_id:
         raise HTTPException(
@@ -190,11 +207,8 @@ def _validate_refresh(db: Session, token: str) -> int:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked"
         )
-    expires_at = rt.expires_at
-    if expires_at.tzinfo is None:
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-    if expires_at <= _utcnow():
-        # Soft revoke expired
+    if rt.expires_at <= _utcnow():
+        # Soft revoke expiré
         rt.revoked = True
         rt.revoked_at = _utcnow()
         db.add(rt)
@@ -205,7 +219,9 @@ def _validate_refresh(db: Session, token: str) -> int:
     return user_id, jti
 
 
-# ================== Current user dependency ==================
+# =========================================================
+# Dépendance utilisateur courant (via access_token)
+# =========================================================
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
     token = request.cookies.get("access_token")
     if not token:
@@ -237,28 +253,12 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return user
 
 
-# ================== Business funcs (tests & routes) ==================
-class UserManager:
-    def __init__(self, db: Session):
-        self.db = db
-
-    def validate_password(self, password: str) -> None:
-        if len(password) < 8:
-            raise HTTPException(status_code=400, detail="Password too short")
-
-    def validate_username(self, username: str) -> None:
-        existing = self.db.query(models.User).filter_by(username=username).first()
-        if existing:
-            raise HTTPException(status_code=400, detail="Username already exists")
-
-    def on_after_register(self, user: models.User) -> None:
-        return None
-
-    def on_after_login(self, user: models.User) -> None:
-        return None
-
-
+# =========================================================
+# Schémas / logique métier (register/login/me)
+# =========================================================
 class AuthRequest(BaseModel):
+    """Payload login/register : username OU email + password."""
+
     username: str | None = None
     email: EmailStr | None = None
     password: str
@@ -272,6 +272,31 @@ class AuthRequest(BaseModel):
         raise HTTPException(status_code=400, detail="Username or email required")
 
 
+class UserResponse(BaseModel):
+    user_id: int
+    email: str  # on renvoie username comme 'email' par compatibilité
+
+
+class UserManager:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def validate_password(self, password: str) -> None:
+        if len(password) < 8:
+            raise HTTPException(status_code=400, detail="Password too short")
+
+    def validate_username(self, username: str) -> None:
+        existing = self.db.query(models.User).filter_by(username=username).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
+
+    def on_after_register(self, user: models.User) -> None:  # hooks
+        return None
+
+    def on_after_login(self, user: models.User) -> None:  # hooks
+        return None
+
+
 def register(req: AuthRequest, db: Session) -> int:
     manager = UserManager(db)
     username = req.identifier
@@ -279,6 +304,7 @@ def register(req: AuthRequest, db: Session) -> int:
     manager.validate_password(req.password)
     hashed = pwd_context.hash(req.password)
     user = models.User(username=username, hashed_password=hashed)
+    # Champs optionnels
     if hasattr(user, "is_active") and getattr(user, "is_active") is None:
         user.is_active = True
     if hasattr(user, "created_at") and getattr(user, "created_at") is None:
@@ -307,24 +333,25 @@ def login(req: AuthRequest, db: Session) -> int:
     return user.id
 
 
-def me(email_or_username: str, db: Session | None = None) -> UserResponse:
-    """Lookup a user by email/username and return basic info."""
-
-    own_session = False
+def me_lookup(email_or_username: str, db: Session | None = None) -> UserResponse:
+    """Lookup direct (utilisé aussi par des tests unitaires)."""
+    own = False
     if db is None:
         db = SessionLocal()
-        own_session = True
+        own = True
     try:
         user = db.query(models.User).filter_by(username=email_or_username).first()
         if user is None:
             raise HTTPException(status_code=404, detail="user_not_found")
         return UserResponse(user_id=user.id, email=user.username)
     finally:
-        if own_session:
+        if own:
             db.close()
 
 
-# ================== Routes ==================
+# =========================================================
+# Routes REST
+# =========================================================
 @router.post("/auth/register", status_code=status.HTTP_201_CREATED)
 def register_endpoint(
     req: AuthRequest, db: Session = Depends(get_db)
@@ -338,15 +365,15 @@ def login_endpoint(
     req: AuthRequest, response: Response, db: Session = Depends(get_db)
 ) -> dict[str, int]:
     user_id = login(req, db)
-    # Access
+    # Access (court)
     access = create_token(
         {"sub": str(user_id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     set_access_cookie(response, access)
-    # Refresh (with DB record + JTI)
+    # Refresh (DB + JTI)
     refresh = _issue_refresh(db, user_id)
     set_refresh_cookie(response, refresh)
-    # hook
+    # Hook post-login
     user = db.get(models.User, user_id)
     UserManager(db).on_after_login(user)
     return {"user_id": user_id}
@@ -361,11 +388,9 @@ def refresh_endpoint(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
         )
-    # Validate and get user_id + jti
     user_id, jti = _validate_refresh(db, token)
-    # Revoke the old refresh
+    # Rotation stricte : révoque l'ancien, émet un nouveau
     _revoke_refresh(db, jti)
-    # Issue a new refresh and access (rotation)
     new_access = create_token(
         {"sub": str(user_id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -379,7 +404,7 @@ def refresh_endpoint(
 def logout_endpoint(
     request: Request, response: Response, db: Session = Depends(get_db)
 ) -> dict[str, str]:
-    # If a refresh cookie exists, revoke it
+    # Si un refresh est présent, on le révoque
     token = request.cookies.get("refresh_token")
     if token:
         try:
@@ -392,16 +417,18 @@ def logout_endpoint(
     return {"detail": "logged_out"}
 
 
-@router.get("/auth/me", response_model=UserResponse)
+@router.get("/auth/me")
 def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse:
     user = get_current_user(request, db)
     return UserResponse(user_id=user.id, email=user.username)
 
 
-# ================== Google OAuth (Authlib) ==================
+# =========================================================
+# Google OAuth (lazy-config)
+# =========================================================
 @router.get("/auth/google/authorize")
 async def google_authorize(request: Request):
-    if "google" not in oauth:
+    if not ensure_google_registered():
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     redirect_uri = f"{BACKEND_URL}/auth/google/callback"
     return await oauth.google.authorize_redirect(request, redirect_uri)
@@ -409,17 +436,16 @@ async def google_authorize(request: Request):
 
 @router.get("/auth/google/callback")
 async def google_callback(request: Request, db: Session = Depends(get_db)):
-    if "google" not in oauth:
+    if not ensure_google_registered():
         raise HTTPException(status_code=500, detail="Google OAuth not configured")
     try:
-        token = await oauth.google.authorize_access_token(request)  # exchanges 'code'
+        token = await oauth.google.authorize_access_token(request)
     except OAuthError as e:
         raise HTTPException(status_code=400, detail=f"OAuth error: {e.error}") from e
 
-    # Get user info (via ID token or userinfo endpoint)
+    # Récupération userinfo
     userinfo = token.get("userinfo")
     if not userinfo:
-        # Try parsing ID token
         try:
             userinfo = await oauth.google.parse_id_token(request, token)
         except Exception:
@@ -433,23 +459,16 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
     # Find or create user
     user = db.query(models.User).filter_by(username=email).first()
     if not user:
-        # Create a passwordless user (OAuth only)
         user = models.User(
             username=email, hashed_password=pwd_context.hash(os.urandom(16).hex())
         )
-        if hasattr(user, "is_active") and getattr(user, "is_active") is None:
+        if hasattr(user, "is_active"):
             user.is_active = True
         if hasattr(user, "is_verified"):
-            try:
-                user.is_verified = True
-            except Exception:
-                pass
+            user.is_verified = True
         if hasattr(user, "display_name") and display_name:
-            try:
-                user.display_name = display_name
-            except Exception:
-                pass
-        if hasattr(user, "created_at") and getattr(user, "created_at") is None:
+            user.display_name = display_name
+        if hasattr(user, "created_at"):
             user.created_at = _utcnow()
         if hasattr(user, "updated_at"):
             user.updated_at = _utcnow()
@@ -457,13 +476,12 @@ async def google_callback(request: Request, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
 
-    # Login: set cookies (access + refresh rotation)
+    # Set cookies et redirige vers le front
     access = create_token(
         {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     refresh = _issue_refresh(db, user.id)
-
-    response = RedirectResponse(url=f"{FRONTEND_URL}")
+    response = RedirectResponse(url=FRONTEND_URL)
     set_access_cookie(response, access)
     set_refresh_cookie(response, refresh)
     return response
