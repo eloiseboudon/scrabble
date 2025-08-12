@@ -9,7 +9,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..database import get_db
+from ..database import get_db, SessionLocal
 
 SECRET_KEY = os.getenv("SECRET_KEY", "secret")
 ALGORITHM = "HS256"
@@ -26,8 +26,34 @@ router = APIRouter()
 
 
 class AuthRequest(BaseModel):
-    email: EmailStr
+    """Request model for authentication endpoints.
+
+    Tests exercise the authentication logic both by calling the functions
+    directly and through the HTTP API.  For direct calls we want to allow
+    specifying either a ``username`` or an ``email``; the original code only
+    accepted an ``email`` which caused validation errors in the unit tests that
+    relied on usernames.  Both fields are optional but at least one must be
+    provided.  The ``identifier`` helper returns whichever value is supplied.
+    """
+
+    username: str | None = None
+    email: EmailStr | None = None
     password: str
+
+    @property
+    def identifier(self) -> str:
+        if self.username:
+            return self.username
+        if self.email:
+            return str(self.email)
+        raise HTTPException(status_code=400, detail="Username or email required")
+
+
+class UserResponse(BaseModel):
+    """Pydantic model used for returning user information."""
+
+    user_id: int
+    email: str
 
 
 class UserManager:
@@ -36,20 +62,20 @@ class UserManager:
     def __init__(self, db: Session):
         self.db = db
 
-    async def validate_password(self, password: str) -> None:
+    def validate_password(self, password: str) -> None:
         if len(password) < 3:
             raise HTTPException(status_code=400, detail="Password too short")
 
-    async def validate_email(self, email: EmailStr) -> None:
-        existing = self.db.query(models.User).filter_by(username=email).first()
+    def validate_username(self, username: str) -> None:
+        existing = self.db.query(models.User).filter_by(username=username).first()
         if existing:
             raise HTTPException(status_code=400, detail="Email already exists")
 
-    async def on_after_register(self, user: models.User) -> None:
+    def on_after_register(self, user: models.User) -> None:  # pragma: no cover - hooks
         # Placeholder hook for post-registration actions
         return None
 
-    async def on_after_login(self, user: models.User) -> None:
+    def on_after_login(self, user: models.User) -> None:  # pragma: no cover - hooks
         # Placeholder hook for post-login actions
         return None
 
@@ -124,46 +150,70 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.
     return user
 
 
-@router.post("/auth/register")
-async def register(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+def register(req: AuthRequest, db: Session) -> int:
+    """Create a new user and return its identifier.
+
+    This function is used directly in the unit tests, so it returns the raw
+    integer ``user_id``.  A separate API endpoint wraps this function and
+    exposes it as ``POST /auth/register`` returning ``{"user_id": id}``.
+    """
+
     manager = UserManager(db)
-    await manager.validate_email(req.email)
-    await manager.validate_password(req.password)
+    username = req.identifier
+    manager.validate_username(username)
+    manager.validate_password(req.password)
     hashed = pwd_context.hash(req.password)
-    user = models.User(username=req.email, hashed_password=hashed)
+    user = models.User(username=username, hashed_password=hashed)
     db.add(user)
     db.commit()
-    await manager.on_after_register(user)
-    return {"user_id": user.id}
+    manager.on_after_register(user)
+    return user.id
 
 
-@router.post("/auth/login")
-async def login(
-    req: AuthRequest,
-    response: Response,
-    db: Session = Depends(get_db),
-) -> dict[str, int]:
-    user = db.query(models.User).filter_by(username=req.email).first()
+@router.post("/auth/register")
+def register_endpoint(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+    user_id = register(req, db)
+    return {"user_id": user_id}
+
+
+def login(req: AuthRequest, db: Session) -> int:
+    """Validate credentials and return the user's id.
+
+    The unit tests call this function directly and expect it to raise an
+    ``HTTPException`` when the credentials are invalid.
+    """
+
+    username = req.identifier
+    user = db.query(models.User).filter_by(username=username).first()
     if not user or not pwd_context.verify(req.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
         )
+    return user.id
+
+
+@router.post("/auth/login")
+def login_endpoint(
+    req: AuthRequest, response: Response, db: Session = Depends(get_db)
+) -> dict[str, int]:
+    user_id = login(req, db)
+    user = db.get(models.User, user_id)
     manager = UserManager(db)
-    await manager.on_after_login(user)
+    manager.on_after_login(user)
     access = create_token(
-        {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        {"sub": str(user_id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     refresh = create_token(
-        {"sub": str(user.id), "type": "refresh"},
+        {"sub": str(user_id), "type": "refresh"},
         timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
     )
     set_access_cookie(response, access)
     set_refresh_cookie(response, refresh)
-    return {"user": user}
+    return {"user_id": user_id}
 
 
 @router.post("/auth/refresh")
-async def refresh(
+def refresh(
     response: Response, request: Request, db: Session = Depends(get_db)
 ) -> dict[str, int]:
     token = request.cookies.get("refresh_token")
@@ -198,14 +248,37 @@ async def refresh(
 
 
 @router.post("/auth/logout")
-async def logout(response: Response) -> dict[str, str]:
+def logout(response: Response) -> dict[str, str]:
     clear_cookies(response)
     return {"detail": "logged_out"}
 
 
+def me(email: str, db: Session | None = None) -> UserResponse:
+    """Lookup a user by email/username.
+
+    When called directly (as in the unit tests) no database session is passed, so
+    this function creates its own temporary session.  The FastAPI route
+    ``me_endpoint`` below passes an explicit session.
+    """
+
+    own_session = False
+    if db is None:
+        db = SessionLocal()
+        own_session = True
+    try:
+        user = db.query(models.User).filter_by(username=email).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="user_not_found")
+        return UserResponse(user_id=user.id, email=user.username)
+    finally:  # pragma: no cover - defensive cleanup
+        if own_session:
+            db.close()
+
+
 @router.get("/auth/me")
-async def me(request: Request, db: Session = Depends(get_db)) -> dict[str, str | int]:
-    return {"user": get_current_user(request, db)}
+def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse:
+    user = get_current_user(request, db)
+    return UserResponse(user_id=user.id, email=user.username)
 
 
 @router.get("/auth/google/authorize")
