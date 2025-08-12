@@ -102,17 +102,25 @@ def clear_cookies(response: Response) -> None:
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> models.User:
     token = request.cookies.get("access_token")
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing token"
+        )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: Optional[str] = payload.get("sub")
     except JWTError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        ) from exc
     if user_id is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        )
     user = db.get(models.User, int(user_id))
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
     return user
 
 
@@ -137,33 +145,53 @@ async def login(
 ) -> dict[str, int]:
     user = db.query(models.User).filter_by(username=req.email).first()
     if not user or not pwd_context.verify(req.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
+        )
     manager = UserManager(db)
     await manager.on_after_login(user)
-    access = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh = create_token({"sub": str(user.id), "type": "refresh"}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    access = create_token(
+        {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh = create_token(
+        {"sub": str(user.id), "type": "refresh"},
+        timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    )
     set_access_cookie(response, access)
     set_refresh_cookie(response, refresh)
-    return {"user_id": user.id}
+    return {"user": user}
 
 
 @router.post("/auth/refresh")
-async def refresh(response: Response, request: Request, db: Session = Depends(get_db)) -> dict[str, int]:
+async def refresh(
+    response: Response, request: Request, db: Session = Depends(get_db)
+) -> dict[str, int]:
     token = request.cookies.get("refresh_token")
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+        )
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         if payload.get("type") != "refresh":
             raise JWTError("Invalid token type")
         user_id = int(payload.get("sub"))
     except JWTError as exc:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token") from exc
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
+        ) from exc
     user = db.get(models.User, user_id)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
-    access = create_token({"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
-    refresh_token = create_token({"sub": str(user.id), "type": "refresh"}, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found"
+        )
+    access = create_token(
+        {"sub": str(user.id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    refresh_token = create_token(
+        {"sub": str(user.id), "type": "refresh"},
+        timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+    )
     set_access_cookie(response, access)
     set_refresh_cookie(response, refresh_token)
     return {"user_id": user.id}
@@ -176,8 +204,8 @@ async def logout(response: Response) -> dict[str, str]:
 
 
 @router.get("/auth/me")
-async def me(user: models.User = Depends(get_current_user)) -> dict[str, str | int]:
-    return {"id": user.id, "email": user.username}
+async def me(request: Request, db: Session = Depends(get_db)) -> dict[str, str | int]:
+    return {"user": get_current_user(request, db)}
 
 
 @router.get("/auth/google/authorize")
