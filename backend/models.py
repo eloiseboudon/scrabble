@@ -1,90 +1,115 @@
-from datetime import datetime, UTC
-from sqlalchemy import (
-    Boolean,
-    CheckConstraint,
-    Column,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
+from datetime import datetime, timezone
+from typing import List
+
+from fastapi_users_db_sqlalchemy import (
+    SQLAlchemyBaseOAuthAccountTableUUID,
+    SQLAlchemyBaseUserTableUUID,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy import CheckConstraint, ForeignKey, String, func
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
-from .database import Base
+
+# Create a base class for declarative models
+class Base(DeclarativeBase):
+    pass
 
 
-class User(Base):
+class TimestampMixin:
+    created_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class OAuthAccount(SQLAlchemyBaseOAuthAccountTableUUID, Base):
+    __tablename__ = "oauth_accounts"
+
+
+class User(SQLAlchemyBaseUserTableUUID, TimestampMixin, Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    display_name: Mapped[str | None] = mapped_column(String(120))
+    avatar_url: Mapped[str | None] = mapped_column(String(512))
+    role: Mapped[str] = mapped_column(String(30), default="player", nullable=False)
 
-    games = relationship("GamePlayer", back_populates="user")
+    oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
+        "OAuthAccount", cascade="all, delete-orphan"
+    )
 
 
 class Game(Base):
     __tablename__ = "games"
 
-    id = Column(Integer, primary_key=True)
-    created_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(UTC),
+    id: Mapped[int] = mapped_column(primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(
+        default=datetime.now(timezone.utc),
         nullable=False,
     )
-    max_players = Column(Integer, nullable=False)
-    vs_computer = Column(Boolean, default=False, nullable=False)
-    finished = Column(Boolean, default=False, nullable=False)
-    started = Column(Boolean, default=False, nullable=False)
-    next_player_id = Column(Integer, nullable=True)
-    passes_in_a_row = Column(Integer, default=0, nullable=False)
-    phase = Column(String, default="waiting_players", nullable=False)
+    max_players: Mapped[int] = mapped_column(nullable=False)
+    vs_computer: Mapped[bool] = mapped_column(default=False, nullable=False)
+    finished: Mapped[bool] = mapped_column(default=False, nullable=False)
+    started: Mapped[bool] = mapped_column(default=False, nullable=False)
+    next_player_id: Mapped[int | None] = mapped_column(nullable=True)
+    passes_in_a_row: Mapped[int] = mapped_column(default=0, nullable=False)
+    phase: Mapped[str] = mapped_column(
+        String, default="waiting_players", nullable=False
+    )
 
     __table_args__ = (
         CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),
     )
 
-    players = relationship("GamePlayer", back_populates="game")
-    tiles = relationship("PlacedTile", back_populates="game")
-    words = relationship("Word", back_populates="game")
+    players: Mapped[List["GamePlayer"]] = relationship(
+        "GamePlayer", back_populates="game"
+    )
+    tiles: Mapped[List["PlacedTile"]] = relationship(
+        "PlacedTile", back_populates="game"
+    )
+    words: Mapped[List["Word"]] = relationship("Word", back_populates="game")
 
 
 class GamePlayer(Base):
     __tablename__ = "game_players"
 
-    id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    is_computer = Column(Boolean, default=False, nullable=False)
-    rack = Column(String, nullable=False)
-    score = Column(Integer, default=0, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    is_computer: Mapped[bool] = mapped_column(default=False, nullable=False)
+    rack: Mapped[str] = mapped_column(String, nullable=False)
+    score: Mapped[int] = mapped_column(default=0, nullable=False)
 
-    game = relationship("Game", back_populates="players")
-    user = relationship("User", back_populates="games")
+    game: Mapped["Game"] = relationship("Game", back_populates="players")
+    user: Mapped["User"] = relationship("User", back_populates="games")
 
 
 class PlacedTile(Base):
     __tablename__ = "placed_tiles"
 
-    id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    player_id = Column(Integer, ForeignKey("game_players.id"), nullable=False)
-    x = Column(Integer, nullable=False)
-    y = Column(Integer, nullable=False)
-    letter = Column(String(1), nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("game_players.id"), nullable=False
+    )
+    x: Mapped[int] = mapped_column(nullable=False)
+    y: Mapped[int] = mapped_column(nullable=False)
+    letter: Mapped[str] = mapped_column(String(1), nullable=False)
 
-    game = relationship("Game", back_populates="tiles")
-    player = relationship("GamePlayer")
+    game: Mapped["Game"] = relationship("Game", back_populates="tiles")
+    player: Mapped["GamePlayer"] = relationship("GamePlayer")
 
 
 class Word(Base):
     __tablename__ = "words"
 
-    id = Column(Integer, primary_key=True)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    player_id = Column(Integer, ForeignKey("game_players.id"), nullable=False)
-    word = Column(String, nullable=False)
-    score = Column(Integer, nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
+    player_id: Mapped[int] = mapped_column(
+        ForeignKey("game_players.id"), nullable=False
+    )
+    word: Mapped[str] = mapped_column(String, nullable=False)
+    score: Mapped[int] = mapped_column(nullable=False)
 
-    game = relationship("Game", back_populates="words")
-    player = relationship("GamePlayer")
+    game: Mapped["Game"] = relationship("Game", back_populates="words")
+    player: Mapped["GamePlayer"] = relationship("GamePlayer")
