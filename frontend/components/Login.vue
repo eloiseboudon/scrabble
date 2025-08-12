@@ -27,7 +27,7 @@ const error = ref('')
 
 async function submit() {
   error.value = ''
-  const endpoint = isRegister.value ? 'register' : 'login'
+  const endpoint = isRegister.value ? 'auth/register' : 'auth/login'
   const res = await fetch(`http://localhost:8000/${endpoint}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -56,11 +56,13 @@ function toggle() {
   gap: 1rem;
   margin-top: 2rem;
 }
+
 .auth form {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
+
 .error {
   color: red;
 }

@@ -1,4 +1,5 @@
 import hashlib
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -18,7 +19,7 @@ class UserLookupResponse(BaseModel):
     user_id: int
 
 
-@router.post("/register")
+@router.post("/auth/register")
 def register(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     """Create a new user and return its identifier."""
     if db.query(models.User).filter_by(username=req.username).first():
@@ -30,7 +31,7 @@ def register(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     return {"user_id": user.id}
 
 
-@router.post("/login")
+@router.post("/auth/login")
 def login(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     """Authenticate a user and return its identifier."""
     hashed = hashlib.sha256(req.password.encode()).hexdigest()
@@ -44,7 +45,25 @@ def login(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
     return {"user_id": user.id}
 
 
-@router.get("/users/by-username")
+@router.post("/auth/logout")
+def logout(req: AuthRequest, db: Session = Depends(get_db)) -> dict[str, int]:
+    """Logout a user and clear cookie"""
+    return {"user_id": req.user_id}
+
+
+@router.get("/auth/google/authorize")
+def google_authorize(req: AuthRequest, db: Session = Depends(get_db)):
+    """(redirige vers Google)"""
+    return {"user_id": req.user_id}
+
+
+@router.get("/auth/google/callback")
+def google_callback(req: AuthRequest, db: Session = Depends(get_db)):
+    """(callback OAuth, création/connexion user)"""
+    return {"user_id": req.user_id}
+
+
+@router.get("/auth/me")
 def get_user_by_username(
     username: str, db: Session = Depends(get_db)
 ) -> UserLookupResponse:
