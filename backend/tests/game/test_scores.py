@@ -12,7 +12,7 @@ from fastapi import HTTPException  # type: ignore
 
 from backend import models  # type: ignore
 from backend.database import Base, SessionLocal, engine  # type: ignore
-from backend.main import (
+from backend.api.games import (
     CreateGameRequest,
     JoinGameRequest,
     MoveRequest,
@@ -21,7 +21,7 @@ from backend.main import (
     play_move,
     get_game_state,
     start_game,
-)  # type: ignore
+)
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
