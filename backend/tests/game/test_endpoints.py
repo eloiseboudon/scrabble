@@ -123,7 +123,7 @@ def test_exchange_pass_resign() -> None:
 def test_user_lookup() -> None:
     with SessionLocal() as db:
         user_id = register(
-            AuthRequest(email="alice@example.com", password="pwd"), db=db
+            AuthRequest(email="alice@example.com", password="pwd12345678"), db=db
         )
     with SessionLocal() as db:
         res = me("alice@example.com")
