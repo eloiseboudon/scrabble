@@ -75,7 +75,10 @@
 
 ## 📱 7. Interface Mobile
 - [x] Adapter le frontend Vue en responsive (taille mobile)
-- [ ] Tester comportement tactile (placement, scroll, zoom)
+- Tester comportement tactile (placement, scroll, zoom) : 
+- [x] Scroll
+- [ ] Placement
+- [ ] Zoom
 - [ ] Bonus : transformer en PWA ou wrapper via Capacitor pour Android/iOS
 
 ## 🚀 8. Déploiement
