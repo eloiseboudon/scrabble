@@ -50,9 +50,14 @@ router = APIRouter()
 oauth = OAuth()
 
 
+def _is_google_registered() -> bool:
+    """Return True if the Google OAuth client is already registered."""
+    return "google" in oauth._registry
+
+
 def ensure_google_registered() -> bool:
     """Enregistre Google au runtime si les env vars existent."""
-    if "google" in oauth:
+    if _is_google_registered():
         return True
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         return False
@@ -70,7 +75,7 @@ def ensure_google_registered() -> bool:
 def google_status() -> dict:
     ready_after_ensure = ensure_google_registered()
     return {
-        "configured": "google" in oauth,
+        "configured": _is_google_registered(),
         "ready_after_ensure": ready_after_ensure,
         "has_client_id": bool(GOOGLE_CLIENT_ID),
         "has_client_secret": bool(GOOGLE_CLIENT_SECRET),
