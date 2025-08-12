@@ -1,6 +1,7 @@
 from .base import Base, TimestampMixin
-from .user import User, OAuthAccount
 from .game import Game, GamePlayer, PlacedTile, Word
+from .refreshToken import RefreshToken
+from .user import OAuthAccount, User
 
 __all__ = [
     "Base",
@@ -11,4 +12,5 @@ __all__ = [
     "GamePlayer",
     "PlacedTile",
     "Word",
+    "RefreshToken",
 ]

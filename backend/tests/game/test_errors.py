@@ -52,7 +52,7 @@ def test_start_game_insufficient_players() -> None:
 
 def test_login_invalid_credentials() -> None:
     with SessionLocal() as db:
-        register(AuthRequest(username="bob", password="pwd"), db=db)
+        register(AuthRequest(username="bob", password="pwd12345678"), db=db)
     with SessionLocal() as db:
         try:
             login(AuthRequest(username="bob", password="wrong"), db=db)
