@@ -353,11 +353,11 @@
         }
 
         function moved(payload) {
-          const { fromRow, fromCol, toRow, toCol } = payload
-          const i = placements.value.findIndex(p => p.row === fromRow && p.col === fromCol)
+          const { from, to } = payload
+          const i = placements.value.findIndex(p => p.row === from.row && p.col === from.col)
           if (i !== -1) {
-            placements.value[i].row = toRow
-            placements.value[i].col = toCol
+            placements.value[i].row = to.row
+            placements.value[i].col = to.col
           }
         }
 
