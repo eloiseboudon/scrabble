@@ -65,6 +65,8 @@
         const wordValid = Vue.ref(false)
         const result = Vue.ref('')
         const currentWord = Vue.ref('')
+        const userName = Vue.ref('')
+        const opponentName = Vue.ref('')
         const score = Vue.ref(0)
         const score_adversaire = Vue.ref(0)
         const userAvatar = Vue.ref('')
@@ -154,6 +156,8 @@
               localStorage.setItem('userId', data.user_id)
               document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
               userAvatar.value = data.avatar_url
+              userName.value = data.display_name
+              opponentName.value = data.display_name ? data.display_name : 'Bot'
               startAuthHeartbeat()
               loadGames()
             } else {
