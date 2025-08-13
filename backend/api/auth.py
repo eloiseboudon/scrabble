@@ -518,6 +518,19 @@ async def update_avatar(
     db.commit()
     return {"avatar_url": user.avatar_url}
 
+
+class PublicUser(BaseModel):
+    user_id: int
+    avatar_url: str | None = None
+
+
+@router.get("/users/{user_id}")
+def get_user_avatar(user_id: int, db: Session = Depends(get_db)) -> PublicUser:
+    user = db.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    return PublicUser(user_id=user.id, avatar_url=user.avatar_url)
+
 # Backward compatible alias for tests expecting `me`
 me = me_lookup
 

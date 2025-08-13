@@ -27,8 +27,14 @@
 
     <div class="validation">
       <div class="score">
-        Toi {{ score }} <br>
-        Adversaire {{ score_adversaire }}
+        <div class="score-line">
+          <img v-if="playerAvatar" :src="playerAvatar" alt="avatar" class="avatar" />
+          <span>Toi {{ score }}</span>
+        </div>
+        <div class="score-line">
+          <img v-if="opponentAvatar" :src="opponentAvatar" alt="avatar adversaire" class="avatar" />
+          <span>Adversaire {{ score_adversaire }}</span>
+        </div>
       </div>
       <button @click="$emit('clear')">
         Effacer
@@ -55,7 +61,9 @@ const props = defineProps({
   letterPoints: { type: Object, default: () => ({}) },
   score: { type: Number, default: 0 },
   score_adversaire: { type: Number, default: 0 },
-  wordValid: { type: Boolean, default: false }
+  wordValid: { type: Boolean, default: false },
+  playerAvatar: { type: String, default: '' },
+  opponentAvatar: { type: String, default: '' }
 })
 
 const emit = defineEmits([
@@ -201,3 +209,22 @@ defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles, getTile })
 
 onBeforeUnmount(() => cleanupDrag())
 </script>
+
+<style scoped>
+.score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.score-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+</style>
