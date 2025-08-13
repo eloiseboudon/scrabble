@@ -6,6 +6,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
 env_path = Path(__file__).resolve().parents[1] / ".env"
@@ -27,6 +28,14 @@ app.add_middleware(
 
 # 3) SessionMiddleware requis pour Authlib (Google OAuth)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
+
+# Static files for default and uploaded avatars
+static_dir = Path(__file__).parent / "static"
+uploads_dir = Path(__file__).parent / "uploads"
+static_dir.mkdir(parents=True, exist_ok=True)
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # 4) Importer les routers APRÈS le chargement du .env et les middlewares
 from .api import auth, games, health, deletion  # noqa: E402

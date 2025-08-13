@@ -1,9 +1,20 @@
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Tuple
 
 from authlib.integrations.starlette_client import OAuth, OAuthError
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -467,6 +478,38 @@ def update_palette(
     db.add(user)
     db.commit()
     return {"color_palette": user.color_palette}
+
+
+@router.post("/auth/me/avatar")
+async def update_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile | None = File(None),
+    choice: str | None = Form(None),
+) -> dict[str, str]:
+    user = get_current_user(request, db)
+    if file is not None:
+        uploads_dir = (
+            Path(__file__).resolve().parent.parent / "uploads" / "avatars"
+        )
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename).suffix or ".png"
+        filename = f"user_{user.id}{ext}"
+        file_path = uploads_dir / filename
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        user.avatar_url = f"/uploads/avatars/{filename}"
+    elif choice:
+        allowed = {f"default{i}.svg" for i in range(1, 6)}
+        if choice not in allowed:
+            raise HTTPException(status_code=400, detail="Invalid avatar choice")
+        user.avatar_url = f"/static/avatars/{choice}"
+    else:
+        raise HTTPException(status_code=400, detail="No avatar provided")
+    db.add(user)
+    db.commit()
+    return {"avatar_url": user.avatar_url}
 
 # Backward compatible alias for tests expecting `me`
 me = me_lookup
