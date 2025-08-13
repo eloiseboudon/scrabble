@@ -27,7 +27,7 @@
                 alt="avatar"
                 class="avatar-img"
               />
-              <div v-else class="avatar-options">
+              <div class="avatar-options">
                 <img
                   v-for="a in defaultAvatars"
                   :key="a"

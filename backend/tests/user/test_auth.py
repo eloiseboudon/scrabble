@@ -38,6 +38,7 @@ def test_auth_flow() -> None:
     assert r.status_code == 200
     assert r.json()["email"] == email
     assert r.json()["color_palette"] == "palette1"
+    assert r.json()["avatar_url"] == "/img/icone/avatars/default1.svg"
 
     # Update palette
     r = client.post("/auth/me/palette", json={"palette": "palette2"})

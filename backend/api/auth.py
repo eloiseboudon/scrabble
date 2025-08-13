@@ -46,6 +46,9 @@ PROD_DOMAIN = os.getenv("PROD_DOMAIN", "").strip()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
+# Default avatar assigned when a user account is created
+DEFAULT_AVATAR_URL = "/img/icone/avatars/default1.svg"
+
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "").strip()
@@ -341,7 +344,11 @@ def register(req: AuthRequest, db: Session) -> int:
     manager.validate_username(username)
     manager.validate_password(req.password)
     hashed = pwd_context.hash(req.password)
-    user = models.User(username=username, hashed_password=hashed)
+    user = models.User(
+        username=username,
+        hashed_password=hashed,
+        avatar_url=DEFAULT_AVATAR_URL,
+    )
     # Champs optionnels
     if hasattr(user, "is_active") and getattr(user, "is_active") is None:
         user.is_active = True
