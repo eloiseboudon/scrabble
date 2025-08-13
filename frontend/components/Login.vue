@@ -27,6 +27,12 @@
             class="auth-input" />
         </div>
 
+        <div class="form-group">
+          <label>
+            <input type="checkbox" v-model="rememberMe" /> Se souvenir de moi
+          </label>
+        </div>
+
         <button type="submit" class="auth-button primary">
           {{ isRegister ? "Créer mon compte" : 'Se connecter' }}
         </button>
@@ -80,6 +86,7 @@ const username = ref('')
 const password = ref('')
 const isRegister = ref(false)
 const error = ref('')
+const rememberMe = ref(false)
 
 async function submit() {
   error.value = ''
@@ -92,7 +99,8 @@ async function submit() {
       credentials: 'include',
       body: JSON.stringify({
         username: username.value,
-        password: password.value
+        password: password.value,
+        remember_me: rememberMe.value
       })
     })
 

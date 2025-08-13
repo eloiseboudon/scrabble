@@ -14,6 +14,19 @@
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
     import { LETTER_POINTS } from './letterPoints.js'
+    import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
+
+    const API_BASE = 'http://localhost:8000'
+
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' })
+        } catch {
+          // ignore
+        }
+      }
+    })
 
     const options = {
       moduleCache: { vue: Vue },
@@ -61,15 +74,17 @@
 
         async function checkAuth() {
           if (userId.value) {
+            startAuthHeartbeat()
             loadGames()
             return
           }
           try {
-            const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
+            const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             if (res.ok) {
               const data = await res.json()
               userId.value = data.user_id
               localStorage.setItem('userId', data.user_id)
+              startAuthHeartbeat()
               loadGames()
             }
           } catch (err) {
@@ -81,18 +96,20 @@
           userId.value = id
           localStorage.setItem('userId', id)
           view.value = 'home'
+          startAuthHeartbeat()
           loadGames()
         }
 
         async function logout() {
           try {
-            await fetch('http://localhost:8000/auth/logout', {
+            await fetch(`${API_BASE}/auth/logout`, {
               method: 'POST',
               credentials: 'include'
             })
           } catch (err) {
             // ignore
           }
+          stopAuthHeartbeat()
           localStorage.removeItem('userId')
           userId.value = null
           ongoingGames.value = []

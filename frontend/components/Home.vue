@@ -1,7 +1,7 @@
 <template>
   <div class="home">
-    <img src="logo-scrabble.svg" alt="Logo Scrabble" width="100" height="100">
-    <h1>Scrabble</h1>
+    <img src="logo-scrabble.png" alt="Logo Scrabble" class="logo">
+    <!-- <h1>Scrabble</h1> -->
     <div v-if="!showOptions">
       <button @click="showOptions = true">Créer une nouvelle partie</button>
     </div>
@@ -94,5 +94,9 @@ nav.nav {
 .new-game-options .buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+img.logo {
+  max-width: 200px;
 }
 </style>

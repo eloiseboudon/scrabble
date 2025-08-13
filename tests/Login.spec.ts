@@ -32,7 +32,7 @@ describe('Login.vue', () => {
     await wrapper.find('form').trigger('submit')
     await flushPromises()
     expect(wrapper.emitted('auth')).toBeFalsy()
-    const err = wrapper.find('.error')
+    const err = wrapper.find('.auth-error')
     expect(err.exists()).toBe(true)
     expect(err.text()).toBe('Bad credentials')
   })
@@ -46,12 +46,12 @@ describe('Login.vue', () => {
     await pass.setValue('secret')
     await wrapper.find('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.find('.error').exists()).toBe(true)
+    expect(wrapper.find('.auth-error').exists()).toBe(true)
 
     // toggle to register
     await wrapper.find('a').trigger('click')
-    expect(wrapper.find('h1').text()).toBe('Inscription')
-    expect(wrapper.find('.error').exists()).toBe(false)
+    expect(wrapper.find('h2').text()).toBe('Inscription')
+    expect(wrapper.find('.auth-error').exists()).toBe(false)
 
     // submit register successfully
     await user.setValue('newuser')
