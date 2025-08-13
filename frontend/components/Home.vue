@@ -1,5 +1,6 @@
 <template>
   <div class="home">
+    <img src="logo-scrabble.svg" alt="Logo Scrabble" width="100" height="100">
     <h1>Scrabble</h1>
     <div v-if="!showOptions">
       <button @click="showOptions = true">Créer une nouvelle partie</button>
