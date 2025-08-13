@@ -53,12 +53,13 @@ describe('Game.vue', () => {
         expect(w.emitted('play')).toBeTruthy()
     })
 
-    it('expose setTile/takeBack/clearAll/lockTiles', () => {
+    it('expose setTile/takeBack/clearAll/lockTiles/getTile', () => {
         const w = mount(Game, { props: { rack: [], letterPoints: {} } })
         expect(typeof w.vm.setTile).toBe('function')
         expect(typeof w.vm.takeBack).toBe('function')
         expect(typeof w.vm.clearAll).toBe('function')
         expect(typeof w.vm.lockTiles).toBe('function')
+        expect(typeof w.vm.getTile).toBe('function')
     })
 
     it('affiche les scores joueur/adversaire', () => {

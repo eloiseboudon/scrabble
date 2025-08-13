@@ -185,7 +185,11 @@ function lockTiles(tiles) {
   placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
 }
 
-defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
+function getTile(r, c) {
+  return gridRef.value?.getTile(r, c) || ''
+}
+
+defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles, getTile })
 
 onBeforeUnmount(() => cleanupDrag())
 </script>
