@@ -220,7 +220,10 @@ def _validate_refresh(db: Session, token: str) -> Tuple[int, int, models.Refresh
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token revoked"
         )
-    if rt.expires_at <= _utcnow():
+    expires = rt.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires <= _utcnow():
         # Soft revoke expiré
         rt.revoked = True
         rt.revoked_at = _utcnow()
@@ -445,6 +448,9 @@ def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse
         display_name=user.display_name,
         avatar_url=user.avatar_url,
     )
+
+# Backward compatible alias for tests expecting `me`
+me = me_lookup
 
 
 # =========================================================

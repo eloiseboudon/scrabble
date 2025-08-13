@@ -1,5 +1,6 @@
+from datetime import datetime
 from typing import List
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin
@@ -27,6 +28,10 @@ class User(TimestampMixin, Base):
     display_name: Mapped[str | None] = mapped_column(String(120))
     avatar_url: Mapped[str | None] = mapped_column(String(512))
     role: Mapped[str] = mapped_column(String(30), default="player", nullable=False)
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    deletion_locked_until: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True)
+    )
 
     oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
         "OAuthAccount", cascade="all, delete-orphan", back_populates="user"
