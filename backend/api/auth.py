@@ -26,6 +26,7 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(
     os.getenv("REFRESH_TOKEN_EXPIRE_DAYS")
     or os.getenv("JWT_REFRESH_LIFETIME_DAYS", "7")
 )
+SHORT_REFRESH_TOKEN_DAYS = 7
 
 ENV = os.getenv("ENV", "dev")  # 'dev' | 'prod'
 # Préférence : COOKIE_DOMAIN (si fourni), sinon PROD_DOMAIN
@@ -116,12 +117,14 @@ def set_access_cookie(response: Response, token: str) -> None:
     )
 
 
-def set_refresh_cookie(response: Response, token: str) -> None:
+def set_refresh_cookie(
+    response: Response, token: str, *, days: int = REFRESH_TOKEN_EXPIRE_DAYS
+) -> None:
     params = _cookie_params()
     response.set_cookie(
         "refresh_token",
         token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 3600,
+        max_age=days * 24 * 3600,
         path="/",
         **params,
     )
@@ -166,11 +169,13 @@ def decode_token(token: str) -> dict:
 # Refresh tokens en base (rotation stricte)
 # models.RefreshToken requis (table: refresh_tokens)
 # =========================================================
-def _issue_refresh(db: Session, user_id: int) -> str:
+def _issue_refresh(
+    db: Session, user_id: int, days: int = REFRESH_TOKEN_EXPIRE_DAYS
+) -> str:
     rt = models.RefreshToken(
         user_id=user_id,
         revoked=False,
-        expires_at=_utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        expires_at=_utcnow() + timedelta(days=days),
     )
     db.add(rt)
     db.commit()
@@ -178,7 +183,7 @@ def _issue_refresh(db: Session, user_id: int) -> str:
     # Token signé avec jti (id de la table)
     token = create_token(
         {"sub": str(user_id), "type": "refresh"},
-        timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS),
+        timedelta(days=days),
         jti=str(rt.id),
     )
     return token
@@ -193,8 +198,8 @@ def _revoke_refresh(db: Session, jti: int) -> None:
         db.commit()
 
 
-def _validate_refresh(db: Session, token: str) -> Tuple[int, int]:
-    """Retourne (user_id, jti) si le refresh est valide, sinon lève HTTP 401."""
+def _validate_refresh(db: Session, token: str) -> Tuple[int, int, models.RefreshToken]:
+    """Retourne (user_id, jti, obj) si le refresh est valide, sinon lève HTTP 401."""
     try:
         payload = decode_token(token)
         if payload.get("type") != "refresh":
@@ -224,7 +229,7 @@ def _validate_refresh(db: Session, token: str) -> Tuple[int, int]:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token expired"
         )
-    return user_id, jti
+    return user_id, jti, rt
 
 
 # =========================================================
@@ -278,6 +283,10 @@ class AuthRequest(BaseModel):
         if self.email:
             return str(self.email)
         raise HTTPException(status_code=400, detail="Username or email required")
+
+
+class LoginRequest(AuthRequest):
+    remember_me: bool = False
 
 
 class UserResponse(BaseModel):
@@ -370,7 +379,7 @@ def register_endpoint(
 
 @router.post("/auth/login")
 def login_endpoint(
-    req: AuthRequest, response: Response, db: Session = Depends(get_db)
+    req: LoginRequest, response: Response, db: Session = Depends(get_db)
 ) -> dict[str, int]:
     user_id = login(req, db)
     # Access (court)
@@ -378,9 +387,10 @@ def login_endpoint(
         {"sub": str(user_id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     set_access_cookie(response, access)
-    # Refresh (DB + JTI)
-    refresh = _issue_refresh(db, user_id)
-    set_refresh_cookie(response, refresh)
+    # Refresh (durée variable)
+    days = REFRESH_TOKEN_EXPIRE_DAYS if req.remember_me else SHORT_REFRESH_TOKEN_DAYS
+    refresh = _issue_refresh(db, user_id, days=days)
+    set_refresh_cookie(response, refresh, days=days)
     # Hook post-login
     user = db.get(models.User, user_id)
     UserManager(db).on_after_login(user)
@@ -396,15 +406,16 @@ def refresh_endpoint(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
         )
-    user_id, jti = _validate_refresh(db, token)
+    user_id, jti, rt = _validate_refresh(db, token)
     # Rotation stricte : révoque l'ancien, émet un nouveau
     _revoke_refresh(db, jti)
     new_access = create_token(
         {"sub": str(user_id)}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    new_refresh = _issue_refresh(db, user_id)
+    ttl_days = int((rt.expires_at - rt.created_at).total_seconds() // 86400) or 1
+    new_refresh = _issue_refresh(db, user_id, days=ttl_days)
     set_access_cookie(response, new_access)
-    set_refresh_cookie(response, new_refresh)
+    set_refresh_cookie(response, new_refresh, days=ttl_days)
     return {"user_id": user_id}
 
 
