@@ -6,7 +6,12 @@
       <button @click="showOptions = true">Créer une nouvelle partie</button>
     </div>
     <div v-else class="new-game-options">
-      <input v-model="opponent" placeholder="Pseudo de l'ami" />
+
+      <div class="form-group">
+        <!-- <label for="username">Nom d'utilisateur</label> -->
+        <input id="username" v-model="opponent" type="text" placeholder="Pseudo de l'ami" required
+          class="search-friend-input" />
+      </div>
       <div class="buttons">
         <button @click="invite">Inviter un ami</button>
         <button @click="vsBot">Jouer contre un bot</button>
@@ -98,5 +103,29 @@ nav.nav {
 
 img.logo {
   max-width: 200px;
+}
+
+
+
+.search-friend-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.search-friend-input:focus {
+  border-color: var(--color-title);
+  box-shadow: 0 0 0 3px rgba(57, 141, 245, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.search-friend-input::placeholder {
+  color: var(--color-text-secondary);
 }
 </style>
