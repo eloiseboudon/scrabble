@@ -333,6 +333,22 @@ def place_tiles(
                 board[rr][cc] = None
             raise ValueError("Move must connect to existing tiles")
 
+    # Ajuster l'orientation si une seule tuile est posée en fonction des voisins
+    if len(placements) == 1:
+        r0, c0, _ltr, _blk = placements[0]
+        horiz_neighbor = (
+            (c0 > 0 and board[r0][c0 - 1] is not None)
+            or (c0 + 1 < BOARD_SIZE and board[r0][c0 + 1] is not None)
+        )
+        vert_neighbor = (
+            (r0 > 0 and board[r0 - 1][c0] is not None)
+            or (r0 + 1 < BOARD_SIZE and board[r0 + 1][c0] is not None)
+        )
+        if vert_neighbor and not horiz_neighbor:
+            horizontal = False
+        elif horiz_neighbor and not vert_neighbor:
+            horizontal = True
+
     # ----- 4) Déterminer le mot principal -----
     if horizontal:
         r = next(iter(rows))

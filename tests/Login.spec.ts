@@ -60,5 +60,14 @@ describe('Login.vue', () => {
     await flushPromises()
     expect(wrapper.emitted('auth')?.[0]?.[0]).toBe('u2')
   })
+
+  it('shows error when submitting empty fields', async () => {
+    const wrapper = mount(Login)
+    await wrapper.find('form').trigger('submit')
+    await flushPromises()
+    expect(wrapper.emitted('auth')).toBeFalsy()
+    const err = wrapper.find('.auth-error')
+    expect(err.exists()).toBe(true)
+  })
 })
 
