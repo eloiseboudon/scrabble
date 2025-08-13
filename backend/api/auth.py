@@ -295,6 +295,13 @@ class LoginRequest(AuthRequest):
 class UserResponse(BaseModel):
     user_id: int
     email: str  # on renvoie username comme 'email' par compatibilité
+    display_name: str | None = None
+    avatar_url: str | None = None
+    color_palette: str | None = None
+
+
+class PaletteUpdate(BaseModel):
+    palette: str
 
 
 class UserManager:
@@ -447,7 +454,19 @@ def me_endpoint(request: Request, db: Session = Depends(get_db)) -> UserResponse
         email=user.username,
         display_name=user.display_name,
         avatar_url=user.avatar_url,
+        color_palette=user.color_palette,
     )
+
+
+@router.post("/auth/me/palette")
+def update_palette(
+    req: PaletteUpdate, request: Request, db: Session = Depends(get_db)
+) -> dict[str, str]:
+    user = get_current_user(request, db)
+    user.color_palette = req.palette
+    db.add(user)
+    db.commit()
+    return {"color_palette": user.color_palette}
 
 # Backward compatible alias for tests expecting `me`
 me = me_lookup

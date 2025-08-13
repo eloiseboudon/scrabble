@@ -22,6 +22,25 @@
             <span class="info-label">Avatar</span>
             <span class="info-value">{{ user.avatar_url || 'Aucun' }}</span>
           </div>
+          <div class="info-item palette-picker">
+            <span class="info-label">Palette</span>
+            <div class="palette-options">
+              <div
+                v-for="p in palettes"
+                :key="p.name"
+                class="palette-option"
+                :class="{ active: selected === p.name }"
+                @click="selectPalette(p.name)"
+              >
+                <span
+                  v-for="c in p.colors"
+                  :key="c"
+                  class="swatch"
+                  :style="{ background: c }"
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -75,12 +94,22 @@ import { onMounted, ref } from 'vue'
 
 const emit = defineEmits(['back', 'logout'])
 const user = ref(null)
+const palettes = [
+  { name: 'palette1', colors: ['#F1D87A', '#398df5'] },
+  { name: 'palette2', colors: ['#67e8f9', '#f59e0b'] },
+  { name: 'palette3', colors: ['#fbbf24', '#7c3aed'] },
+  { name: 'palette4', colors: ['#84cc16', '#2563eb'] },
+  { name: 'palette5', colors: ['#a78bfa', '#f59e0b'] }
+]
+const selected = ref('palette1')
 
 onMounted(async () => {
   try {
     const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
     if (res.ok) {
       user.value = await res.json()
+      selected.value = user.value.color_palette || 'palette1'
+      document.documentElement.setAttribute('data-theme', selected.value)
       const res2 = await fetch('http://localhost:8000/games/user/' + user.value.user_id, { credentials: 'include' })
       Object.assign(user.value, await res2.json())
     }
@@ -88,6 +117,26 @@ onMounted(async () => {
     console.error('Erreur lors du chargement du profil:', err)
   }
 })
+
+function selectPalette(palette) {
+  selected.value = palette
+  updatePalette()
+}
+
+async function updatePalette() {
+  document.documentElement.setAttribute('data-theme', selected.value)
+  try {
+    await fetch('http://localhost:8000/auth/me/palette', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ palette: selected.value })
+    })
+    if (user.value) user.value.color_palette = selected.value
+  } catch (err) {
+    console.error('Erreur mise à jour palette:', err)
+  }
+}
 
 async function deleteAccount() {
   if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ?')) {
@@ -224,6 +273,32 @@ async function deleteAccount() {
   color: var(--color-text-primary);
   font-size: 1rem;
   word-break: break-all;
+}
+
+.palette-options {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.palette-option {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  border: 2px solid transparent;
+}
+
+.palette-option.active {
+  border-color: var(--color-title);
+}
+
+.swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-xs);
 }
 
 .stats-grid {
