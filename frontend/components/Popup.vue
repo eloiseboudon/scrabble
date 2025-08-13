@@ -8,7 +8,7 @@
         class="popup-input"
         autofocus
       />
-      <div class="actions">
+      <div class="actions" v-if="popup.type !== 'loading'">
         <button
           v-if="popup.type !== 'alert'"
           class="btn cancel"

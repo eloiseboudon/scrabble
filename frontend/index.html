@@ -15,6 +15,7 @@
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
     import { LETTER_POINTS } from './letterPoints.js'
     import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
+    import { runBotThinking } from './botThinking.js'
 
     const API_BASE = 'http://localhost:8000'
 
@@ -234,7 +235,7 @@
           result.value = ''
           score.value = 0
           score_adversaire.value = 0
-          const game = { id: game_id, player_id }
+          const game = { id: game_id, player_id, vsBot: true }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
@@ -274,7 +275,7 @@
           result.value = ''
           score.value = 0
           score_adversaire.value = 0
-          const game = { id: game_id, player_id }
+          const game = { id: game_id, player_id, vsBot: false }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
@@ -394,74 +395,88 @@
 
         async function play() {
           if (placements.value.length === 0) return
-          const res = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}/play`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                player_id: currentGame.value.player_id,
-                placements: placements.value
+          const execute = async () => {
+            const res = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}/play`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  player_id: currentGame.value.player_id,
+                  placements: placements.value
+                })
+              }
+            )
+            if (!res.ok) {
+              const err = await res.json()
+              result.value = err.detail || 'Coup invalide'
+              return
+            }
+            const data = await res.json()
+            if (data.words && data.words.length) {
+              await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+            }
+            result.value = `Score : ${data.score}`
+            gameRef.value.lockTiles(placements.value)
+            placements.value = []
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
               })
             }
-          )
-          if (!res.ok) {
-            const err = await res.json()
-            result.value = err.detail || 'Coup invalide'
-            return
+            const stateRes = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+            )
+            const stateData = await stateRes.json()
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
           }
-          const data = await res.json()
-          if (data.words && data.words.length) {
-            await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+          if (currentGame.value?.vsBot) {
+            await runBotThinking(popup, execute)
+          } else {
+            await execute()
           }
-          result.value = `Score : ${data.score}`
-          gameRef.value.lockTiles(placements.value)
-          placements.value = []
-          if (data.bot_move) {
-            data.bot_move.forEach(([row, col, letter, blank]) => {
-              gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-            })
-          }
-          const stateRes = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
-          )
-          const stateData = await stateRes.json()
-          rack.value = stateData.rack
-          score.value = stateData.scores[currentGame.value.player_id] || 0
-          const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-          score_adversaire.value = advId ? stateData.scores[advId] : 0
         }
 
         async function passTurn() {
           clearMove()
-          const res = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}/pass`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ player_id: currentGame.value.player_id })
+          const execute = async () => {
+            const res = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}/pass`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_id: currentGame.value.player_id })
+              }
+            )
+            if (!res.ok) {
+              const err = await res.json()
+              result.value = err.detail || 'Action impossible'
+              return
             }
-          )
-          if (!res.ok) {
-            const err = await res.json()
-            result.value = err.detail || 'Action impossible'
-            return
+            const data = await res.json()
+            result.value = 'Tour passé'
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+              })
+            }
+            const stateRes = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+            )
+            const stateData = await stateRes.json()
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
           }
-          const data = await res.json()
-          result.value = 'Tour passé'
-          if (data.bot_move) {
-            data.bot_move.forEach(([row, col, letter, blank]) => {
-              gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-            })
+          if (currentGame.value?.vsBot) {
+            await runBotThinking(popup, execute)
+          } else {
+            await execute()
           }
-          const stateRes = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
-          )
-          const stateData = await stateRes.json()
-          rack.value = stateData.rack
-          score.value = stateData.scores[currentGame.value.player_id] || 0
-          const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-          score_adversaire.value = advId ? stateData.scores[advId] : 0
         }
 
         checkAuth()
