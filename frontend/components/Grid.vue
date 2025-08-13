@@ -144,7 +144,11 @@ function lockTiles(placements) {
   })
 }
 
-defineExpose({ clearAll, takeBack, setTile, lockTiles })
+function getTile(row, col) {
+  return grid.value[row][col]
+}
+
+defineExpose({ clearAll, takeBack, setTile, lockTiles, getTile })
 </script>
 
 <style scoped>

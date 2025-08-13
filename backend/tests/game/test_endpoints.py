@@ -109,7 +109,8 @@ def test_exchange_pass_resign() -> None:
         )
     assert len(exchange["letters"]) == 1
 
-    passed = pass_turn(game_id, PassRequest(player_id=p1))
+    with SessionLocal() as db:
+        passed = pass_turn(game_id, PassRequest(player_id=p1), db=db)
     assert passed["status"] == "passed"
 
     challenged = challenge_move(game_id, ChallengeRequest(player_id=p2))

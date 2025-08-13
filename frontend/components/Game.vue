@@ -37,7 +37,7 @@
         Mélanger
       </button>
       <button v-show="placements" @click="$emit('play')">
-        Jouer
+        Jouer <span>{{ props.wordValid ? '▶️' : '❌' }}</span>
       </button>
       <button v-show="!placements" @click="$emit('pass')">
         Passer
@@ -54,7 +54,8 @@ const props = defineProps({
   result: { type: String, default: '' },
   letterPoints: { type: Object, default: () => ({}) },
   score: { type: Number, default: 0 },
-  score_adversaire: { type: Number, default: 0 }
+  score_adversaire: { type: Number, default: 0 },
+  wordValid: { type: Boolean, default: false }
 })
 
 const emit = defineEmits([
@@ -184,7 +185,11 @@ function lockTiles(tiles) {
   placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
 }
 
-defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
+function getTile(r, c) {
+  return gridRef.value?.getTile(r, c) || ''
+}
+
+defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles, getTile })
 
 onBeforeUnmount(() => cleanupDrag())
 </script>
