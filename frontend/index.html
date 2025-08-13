@@ -17,6 +17,7 @@
     import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
     import { runBotThinking } from './botThinking.js'
     import { showInvalidWords } from './invalidWords.js'
+    import { collectWords } from './validateWords.js'
 
     const API_BASE = 'http://localhost:8000'
 
@@ -109,50 +110,24 @@
         window.appPrompt = promptApp
 
         async function validateWord() {
-          if (placements.value.length === 0) {
+          const words = collectWords(gameRef.value.getTile, placements.value)
+          if (words.length === 0) {
             wordValid.value = false
             currentWord.value = ''
             return
           }
 
-          const rows = placements.value.map(p => p.row)
-          const cols = placements.value.map(p => p.col)
-          const sameRow = new Set(rows).size === 1
-          const sameCol = new Set(cols).size === 1
-          let word = ''
-
-          if (sameRow) {
-            const row = rows[0]
-            const size = 15
-            let start = Math.min(...cols)
-            while (start > 0 && gameRef.value.getTile(row, start - 1)) start--
-            for (let c = start; c < size; c++) {
-              const tile = gameRef.value.getTile(row, c)
-              if (!tile) break
-              word += tile.toUpperCase()
-            }
-          } else if (sameCol) {
-            const col = cols[0]
-            const size = 15
-            let start = Math.min(...rows)
-            while (start > 0 && gameRef.value.getTile(start - 1, col)) start--
-            for (let r = start; r < size; r++) {
-              const tile = gameRef.value.getTile(r, col)
-              if (!tile) break
-              word += tile.toUpperCase()
-            }
-          } else {
-            wordValid.value = false
-            currentWord.value = ''
-            return
-          }
-
-          currentWord.value = word.toUpperCase()
+          currentWord.value = words[0]
 
           try {
-            const res = await fetch(`http://localhost:8000/validate?word=${encodeURIComponent(word)}`)
-            const data = await res.json()
-            wordValid.value = data.valid
+            const results = await Promise.all(
+              words.map(w =>
+                fetch(`http://localhost:8000/validate?word=${encodeURIComponent(w)}`)
+                  .then(r => r.json())
+                  .then(d => d.valid)
+              )
+            )
+            wordValid.value = results.every(Boolean)
           } catch {
             wordValid.value = false
           }
