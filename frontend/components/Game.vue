@@ -36,10 +36,10 @@
       <button @click="$emit('shuffle')">
         Mélanger
       </button>
-      <button v-show="placements" @click="$emit('play')">
+      <button v-show="placements" @click="onPlay">
         Jouer <span>{{ props.wordValid ? '▶️' : '❌' }}</span>
       </button>
-      <button v-show="!placements" @click="$emit('pass')">
+      <button v-show="!placements" @click="onPass">
         Passer
       </button>
     </div>
@@ -78,6 +78,14 @@ function handlePlaced(payload) {
 function handleRemoved(payload) {
   if (placements.value > 0) placements.value--
   emit('removed', payload)
+}
+
+function onPlay() {
+  if (placements.value > 0) emit('play')
+}
+
+function onPass() {
+  if (placements.value === 0) emit('pass')
 }
 
 // DÉMARRER DRAG TACTILE DEPUIS LE RACK
