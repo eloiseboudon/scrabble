@@ -16,6 +16,7 @@
     import { LETTER_POINTS } from './letterPoints.js'
     import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
     import { runBotThinking } from './botThinking.js'
+    import { showInvalidWords } from './invalidWords.js'
 
     const API_BASE = 'http://localhost:8000'
 
@@ -62,6 +63,7 @@
         const placements = Vue.ref([])
         const wordValid = Vue.ref(false)
         const result = Vue.ref('')
+        const currentWord = Vue.ref('')
         const score = Vue.ref(0)
         const score_adversaire = Vue.ref(0)
         const gameRef = Vue.ref(null)
@@ -109,6 +111,7 @@
         async function validateWord() {
           if (placements.value.length === 0) {
             wordValid.value = false
+            currentWord.value = ''
             return
           }
 
@@ -140,8 +143,11 @@
             }
           } else {
             wordValid.value = false
+            currentWord.value = ''
             return
           }
+
+          currentWord.value = word.toUpperCase()
 
           try {
             const res = await fetch(`http://localhost:8000/validate?word=${encodeURIComponent(word)}`)
@@ -409,6 +415,10 @@
             )
             if (!res.ok) {
               const err = await res.json()
+              const words = await showInvalidWords(alertApp, err.detail, currentWord.value)
+              if (!words.length) {
+                await alertApp(err.detail || 'Coup invalide')
+              }
               result.value = err.detail || 'Coup invalide'
               return
             }
