@@ -33,7 +33,7 @@ onMounted(async () => {
     if (res.ok) {
       user.value = await res.json()
       const res2 = await fetch('http://localhost:8000/games/user/' + user.value.user_id, { credentials: 'include' })
-      user.value += await res2.json()
+      Object.assign(user.value, await res2.json())
     }
   } catch (err) {
     // ignore errors
