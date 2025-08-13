@@ -48,9 +48,10 @@
     const Settings = await loadModule('./components/Settings.vue', options)
     const Profile = await loadModule('./components/Profile.vue', options)
     const Login = await loadModule('./components/Login.vue', options)
+    const Popup = await loadModule('./components/Popup.vue', options)
 
     const App = {
-      components: { Grid, Home, Game, Settings, Profile, Login },
+      components: { Grid, Home, Game, Settings, Profile, Login, Popup },
       setup() {
         const view = Vue.ref('home')
         const userId = Vue.ref(localStorage.getItem('userId'))
@@ -64,6 +65,45 @@
         const score_adversaire = Vue.ref(0)
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
+        const popup = Vue.ref(null)
+
+        function alertApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'alert', message, resolve }
+          })
+        }
+
+        function confirmApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'confirm', message, resolve }
+          })
+        }
+
+        function promptApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'prompt', message, value: '', resolve }
+          })
+        }
+
+        function onPopupConfirm(value) {
+          if (popup.value) {
+            const { resolve, type } = popup.value
+            resolve(type === 'prompt' ? value : true)
+            popup.value = null
+          }
+        }
+
+        function onPopupCancel() {
+          if (popup.value) {
+            const { resolve, type } = popup.value
+            resolve(type === 'prompt' ? null : false)
+            popup.value = null
+          }
+        }
+
+        window.appAlert = alertApp
+        window.appConfirm = confirmApp
+        window.appPrompt = promptApp
 
         async function validateWord() {
           if (placements.value.length === 0) {
@@ -203,7 +243,7 @@
         async function newGameFriend(pseudo) {
           const resUser = await fetch(`http://localhost:8000/users/by-username?username=${encodeURIComponent(pseudo)}`)
           if (!resUser.ok) {
-            alert('Utilisateur introuvable')
+            await alertApp('Utilisateur introuvable')
             return
           }
           const { user_id: friendId } = await resUser.json()
@@ -300,11 +340,11 @@
           }
         }
 
-        function placed(payload) {
+        async function placed(payload) {
           rack.value.splice(payload.index, 1)
           if (payload.letter === '?') {
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-            let choice = prompt(`Choisissez une lettre pour le joker:\n${letters}`)
+            let choice = await promptApp(`Choisissez une lettre pour le joker:\n${letters}`)
             if (!choice) {
               rack.value.splice(payload.index, 0, '?')
               gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
@@ -372,7 +412,7 @@
           }
           const data = await res.json()
           if (data.words && data.words.length) {
-            alert(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+            await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
           }
           result.value = `Score : ${data.score}`
           gameRef.value.lockTiles(placements.value)
@@ -453,7 +493,10 @@
           logout,
           score,
           score_adversaire,
-          wordValid
+          wordValid,
+          popup,
+          onPopupConfirm,
+          onPopupCancel
         }
       },
       template: `
@@ -486,6 +529,7 @@
                 @pass="passTurn" />
           <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
           <Settings v-else-if="view==='settings'" @back="view='home'" />
+          <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
         `
     }
 

@@ -139,7 +139,8 @@ async function updatePalette() {
 }
 
 async function deleteAccount() {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ?')) {
+  const confirmed = await window.appConfirm('Êtes-vous sûr de vouloir supprimer votre compte ?')
+  if (!confirmed) {
     return
   }
   try {
@@ -148,7 +149,7 @@ async function deleteAccount() {
       credentials: 'include',
     })
     emit('logout')
-    alert('Demande de suppression enregistrée')
+    await window.appAlert('Demande de suppression enregistrée')
   } catch (err) {
     console.error('Erreur lors de la suppression du compte:', err)
   }
