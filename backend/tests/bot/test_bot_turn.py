@@ -13,9 +13,11 @@ from backend.api.games import (
     CreateGameRequest,
     JoinGameRequest,
     MoveRequest,
+    PassRequest,
     create_game,
     join_game,
     play_move,
+    pass_turn,
     start_game,
     get_game_state,
     _maybe_play_bot,
@@ -78,6 +80,19 @@ def test_invalid_bot_move_keeps_turn():
             res = play_move(game_id, MoveRequest(player_id=p1, placements=placements), db=db)
     assert "bot_move" not in res
     assert res["next_player_id"] == bot_id
+
+
+def test_pass_triggers_bot_move():
+    game_id, p1, _bot_id, _rack1, rack_bot = _setup_bot_game()
+    bot_letter = rack_bot[0].upper()
+    with patch(
+        "backend.api.games.game_module.bot_turn",
+        return_value=([(7, 10, bot_letter, False)], 1),
+    ), patch("backend.api.games.place_tiles", return_value=(1, [])):
+        with SessionLocal() as db:
+            res = pass_turn(game_id, PassRequest(player_id=p1), db=db)
+    assert "bot_move" in res
+    assert res["next_player_id"] == p1
 
 
 def test_state_fetch_triggers_pending_bot_move():
