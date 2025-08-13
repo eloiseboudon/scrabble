@@ -40,7 +40,10 @@ class GamePlayer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"), nullable=False)
-    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
     is_computer: Mapped[bool] = mapped_column(default=False, nullable=False)
     rack: Mapped[str] = mapped_column(String, nullable=False)
     score: Mapped[int] = mapped_column(default=0, nullable=False)

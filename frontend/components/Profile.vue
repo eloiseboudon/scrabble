@@ -63,6 +63,9 @@
       <button class="btn-logout" @click="emit('logout')">
         🚪 Déconnexion
       </button>
+      <button class="btn-delete" @click="deleteAccount">
+        🗑️ Supprimer le compte
+      </button>
     </div>
   </div>
 </template>
@@ -85,6 +88,22 @@ onMounted(async () => {
     console.error('Erreur lors du chargement du profil:', err)
   }
 })
+
+async function deleteAccount() {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ?')) {
+    return
+  }
+  try {
+    await fetch('http://localhost:8000/me/deletion-request', {
+      method: 'POST',
+      credentials: 'include',
+    })
+    emit('logout')
+    alert('Demande de suppression enregistrée')
+  } catch (err) {
+    console.error('Erreur lors de la suppression du compte:', err)
+  }
+}
 </script>
 
 <style scoped>
@@ -317,7 +336,8 @@ onMounted(async () => {
 }
 
 .btn-back,
-.btn-logout {
+.btn-logout,
+.btn-delete {
   background: var(--color-secondary);
   color: white;
   border: none;
@@ -337,14 +357,16 @@ onMounted(async () => {
 }
 
 .btn-back:hover,
-.btn-logout:hover {
+.btn-logout:hover,
+.btn-delete:hover {
   background: var(--color-primary);
   transform: translateY(-2px);
   box-shadow: 0 6px 20px var(--color-shadow);
 }
 
 .btn-back:active,
-.btn-logout:active {
+.btn-logout:active,
+.btn-delete:active {
   transform: translateY(0);
   box-shadow: 0 2px 8px var(--color-shadow);
 }
@@ -356,6 +378,15 @@ onMounted(async () => {
 .btn-logout:hover {
   background: linear-gradient(135deg, #F9C68A, #F6BA79);
   box-shadow: 0 6px 20px rgba(242, 156, 63, 0.3);
+}
+
+.btn-delete {
+  background: linear-gradient(135deg, #e74c3c, #c0392b);
+}
+
+.btn-delete:hover {
+  background: linear-gradient(135deg, #ff6b5a, #e74c3c);
+  box-shadow: 0 6px 20px rgba(231, 76, 60, 0.3);
 }
 
 .btn-back:focus,
@@ -388,7 +419,8 @@ onMounted(async () => {
   }
 
   .btn-back,
-  .btn-logout {
+  .btn-logout,
+  .btn-delete {
     width: 100%;
     max-width: 200px;
   }

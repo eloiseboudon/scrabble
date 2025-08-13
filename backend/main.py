@@ -29,8 +29,9 @@ app.add_middleware(
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
 # 4) Importer les routers APRÈS le chargement du .env et les middlewares
-from .api import auth, games, health  # noqa: E402
+from .api import auth, games, health, deletion  # noqa: E402
 
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(games.router)
+app.include_router(deletion.router)
