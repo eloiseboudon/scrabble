@@ -6,17 +6,18 @@
       <button @click="showOptions = true">Créer une nouvelle partie</button>
     </div>
     <div v-else class="new-game-options">
-
-      <div class="form-group">
-        <!-- <label for="username">Nom d'utilisateur</label> -->
-        <input id="username" v-model="opponent" type="text" placeholder="Pseudo de l'ami" required
-          class="search-friend-input" />
-      </div>
       <div class="buttons">
-        <button @click="invite">Inviter un ami</button>
+        <button @click="inviteFriend = true">Jouer contre un ami</button>
         <button @click="vsBot">Jouer contre un bot</button>
         <button @click="cancel">Annuler</button>
       </div>
+
+      <div v-if="inviteFriend" class="form-group">
+        <input id="username" v-model="opponent" type="text" placeholder="Pseudo de l'ami" required
+          class="search-friend-input" />
+        <button @click="vsFriend">Inviter</button>
+      </div>
+
     </div>
     <div id="ongoing-games" class="game-menu">
       <h2>Parties en cours</h2>
@@ -55,8 +56,9 @@ const emit = defineEmits(['new-game-friend', 'new-game-bot', 'resume', 'navigate
 
 const showOptions = ref(false)
 const opponent = ref('')
+const inviteFriend = ref(false)
 
-function invite() {
+function vsFriend() {
   if (opponent.value.trim() !== '') {
     emit('new-game-friend', opponent.value.trim())
     opponent.value = ''
