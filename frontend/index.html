@@ -58,11 +58,29 @@
         const finishedGames = Vue.ref([])
         const rack = Vue.ref([])
         const placements = Vue.ref([])
+        const wordValid = Vue.ref(false)
         const result = Vue.ref('')
         const score = Vue.ref(0)
         const score_adversaire = Vue.ref(0)
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
+
+        async function validateWord() {
+          if (placements.value.length === 0) {
+            wordValid.value = false
+            return
+          }
+          const word = placements.value.map(p => p.letter).join('')
+          try {
+            const res = await fetch(`http://localhost:8000/validate?word=${encodeURIComponent(word)}`)
+            const data = await res.json()
+            wordValid.value = data.valid
+          } catch {
+            wordValid.value = false
+          }
+        }
+
+        Vue.watch(placements, validateWord, { deep: true })
 
         async function loadGames() {
           if (!userId.value) return
@@ -373,7 +391,8 @@
           onAuth,
           logout,
           score,
-          score_adversaire
+          score_adversaire,
+          wordValid
         }
       },
       template: `
@@ -392,6 +411,7 @@
                 :score="score"
                 :score_adversaire="score_adversaire"
                 :letter-points="LETTER_POINTS"
+                :word-valid="wordValid"
                 @home="goHome"
                 @finish="finishGame"
                 @placed="placed"

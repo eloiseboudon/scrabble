@@ -9,7 +9,7 @@ describe('Game.vue', () => {
 
     function getByText(wrapper: any, selector: string, text: string) {
         const els = wrapper.findAll(selector)
-        const el = els.find(e => e.text().trim() === text)
+        const el = els.find(e => e.text().trim().startsWith(text))
         if (!el) throw new Error(`No ${selector} with text "${text}"`)
         return el
     }
@@ -39,7 +39,7 @@ describe('Game.vue', () => {
         const w = mount(Game, { props: { rack: [], letterPoints: { A: 1 } } })
             ; (w.vm as any).setTile(7, 7, 'A', true)
         await nextTick()
-        const jouerBtn = w.findAll('button').find(b => b.text().trim() === 'Jouer')
+        const jouerBtn = w.findAll('button').find(b => b.text().trim().startsWith('Jouer'))
         expect(jouerBtn?.element.style.display).toBe('none')
         await getByText(w, 'button', 'Passer').trigger('click')
         expect(w.emitted('pass')).toBeTruthy()
