@@ -22,6 +22,10 @@
             <span class="info-label">Avatar</span>
             <span class="info-value">{{ user.avatar_url || 'Aucun' }}</span>
           </div>
+          <div class="info-item">
+            <span class="info-label">Palette</span>
+            <span class="info-value">{{ user.color_palette }}</span>
+          </div>
         </div>
       </div>
 
@@ -81,6 +85,7 @@ onMounted(async () => {
     const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
     if (res.ok) {
       user.value = await res.json()
+      document.documentElement.setAttribute('data-theme', user.value.color_palette || 'palette1')
       const res2 = await fetch('http://localhost:8000/games/user/' + user.value.user_id, { credentials: 'include' })
       Object.assign(user.value, await res2.json())
     }

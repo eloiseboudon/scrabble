@@ -37,6 +37,15 @@ def test_auth_flow() -> None:
     r = client.get("/auth/me")
     assert r.status_code == 200
     assert r.json()["email"] == email
+    assert r.json()["color_palette"] == "palette1"
+
+    # Update palette
+    r = client.post("/auth/me/palette", json={"palette": "palette2"})
+    assert r.status_code == 200
+    assert r.json()["color_palette"] == "palette2"
+    r = client.get("/auth/me")
+    assert r.status_code == 200
+    assert r.json()["color_palette"] == "palette2"
 
     # Logout -> 200 + cookies supprimés
     r = client.post("/auth/logout")

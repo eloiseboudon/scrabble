@@ -32,6 +32,9 @@ class User(TimestampMixin, Base):
     deletion_locked_until: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True)
     )
+    color_palette: Mapped[str] = mapped_column(
+        String(20), default="palette1", nullable=False
+    )
 
     oauth_accounts: Mapped[List[OAuthAccount]] = relationship(
         "OAuthAccount", cascade="all, delete-orphan", back_populates="user"
