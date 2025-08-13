@@ -144,31 +144,29 @@
         }
 
         async function checkAuth() {
-          if (userId.value) {
-            startAuthHeartbeat()
-            loadGames()
-            return
-          }
           try {
             const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             if (res.ok) {
               const data = await res.json()
               userId.value = data.user_id
               localStorage.setItem('userId', data.user_id)
+              document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
               startAuthHeartbeat()
               loadGames()
+            } else {
+              userId.value = null
+              localStorage.removeItem('userId')
             }
           } catch (err) {
             // ignore
           }
         }
 
-        function onAuth(id) {
+        async function onAuth(id) {
           userId.value = id
           localStorage.setItem('userId', id)
           view.value = 'home'
-          startAuthHeartbeat()
-          loadGames()
+          await checkAuth()
         }
 
         async function logout() {
