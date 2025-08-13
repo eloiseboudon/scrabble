@@ -10,17 +10,16 @@ sys.path.append(str(pathlib.Path(__file__).resolve().parents[2]))
 os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from fastapi import HTTPException
-from backend.database import Base, SessionLocal, engine  # type: ignore
-from backend.main import (  # type: ignore
-    AuthRequest,
+
+from backend.api.auth import AuthRequest, login, register
+from backend.api.games import (
     CreateGameRequest,
     JoinGameRequest,
     create_game,
     join_game,
-    login,
-    register,
     start_game,
 )
+from backend.database import Base, SessionLocal, engine  # type: ignore
 
 Base.metadata.drop_all(bind=engine)
 Base.metadata.create_all(bind=engine)
@@ -53,7 +52,7 @@ def test_start_game_insufficient_players() -> None:
 
 def test_login_invalid_credentials() -> None:
     with SessionLocal() as db:
-        register(AuthRequest(username="bob", password="pwd"), db=db)
+        register(AuthRequest(username="bob", password="pwd12345678"), db=db)
     with SessionLocal() as db:
         try:
             login(AuthRequest(username="bob", password="wrong"), db=db)

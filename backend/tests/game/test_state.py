@@ -12,7 +12,7 @@ os.environ["DATABASE_URL"] = "sqlite:///./test.db"
 
 from fastapi import HTTPException  # type: ignore
 from backend.database import Base, SessionLocal, engine  # type: ignore
-from backend.main import (  # type: ignore
+from backend.api.games import (
     CreateGameRequest,
     JoinGameRequest,
     MoveRequest,

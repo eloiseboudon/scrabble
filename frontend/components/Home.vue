@@ -1,16 +1,23 @@
 <template>
   <div class="home">
-    <h1>Scrabble</h1>
+    <img src="logo-scrabble.png" alt="Logo Scrabble" class="logo">
+    <!-- <h1>Scrabble</h1> -->
     <div v-if="!showOptions">
       <button @click="showOptions = true">Créer une nouvelle partie</button>
     </div>
     <div v-else class="new-game-options">
-      <input v-model="opponent" placeholder="Pseudo de l'ami" />
       <div class="buttons">
-        <button @click="invite">Inviter un ami</button>
+        <button @click="inviteFriend = true">Jouer contre un ami</button>
         <button @click="vsBot">Jouer contre un bot</button>
         <button @click="cancel">Annuler</button>
       </div>
+
+      <div v-if="inviteFriend" class="form-group">
+        <input id="username" v-model="opponent" type="text" placeholder="Pseudo de l'ami" required
+          class="search-friend-input" />
+        <button @click="vsFriend">Inviter</button>
+      </div>
+
     </div>
     <div id="ongoing-games" class="game-menu">
       <h2>Parties en cours</h2>
@@ -49,8 +56,9 @@ const emit = defineEmits(['new-game-friend', 'new-game-bot', 'resume', 'navigate
 
 const showOptions = ref(false)
 const opponent = ref('')
+const inviteFriend = ref(false)
 
-function invite() {
+function vsFriend() {
   if (opponent.value.trim() !== '') {
     emit('new-game-friend', opponent.value.trim())
     opponent.value = ''
@@ -93,5 +101,33 @@ nav.nav {
 .new-game-options .buttons {
   display: flex;
   gap: 0.5rem;
+}
+
+img.logo {
+  max-width: 200px;
+}
+
+
+
+.search-friend-input {
+  background: rgba(255, 255, 255, 0.9);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  font-size: 1rem;
+  font-family: inherit;
+  color: var(--color-text-primary);
+  transition: all 0.3s ease;
+  outline: none;
+}
+
+.search-friend-input:focus {
+  border-color: var(--color-title);
+  box-shadow: 0 0 0 3px rgba(57, 141, 245, 0.1);
+  background: rgba(255, 255, 255, 1);
+}
+
+.search-friend-input::placeholder {
+  color: var(--color-text-secondary);
 }
 </style>
