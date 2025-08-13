@@ -121,7 +121,7 @@ const palettes = [
 const selected = ref('palette1')
 const defaultAvatars = Array.from(
   { length: 5 },
-  (_, i) => `/static/avatars/default${i + 1}.svg`
+  (_, i) => `/img/icone/avatars/default${i + 1}.svg`
 )
 
 onMounted(async () => {

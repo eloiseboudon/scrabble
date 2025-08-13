@@ -504,7 +504,7 @@ async def update_avatar(
         allowed = {f"default{i}.svg" for i in range(1, 6)}
         if choice not in allowed:
             raise HTTPException(status_code=400, detail="Invalid avatar choice")
-        user.avatar_url = f"/static/avatars/{choice}"
+        user.avatar_url = f"/img/icone/avatars/{choice}"
     else:
         raise HTTPException(status_code=400, detail="No avatar provided")
     db.add(user)

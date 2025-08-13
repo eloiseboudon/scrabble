@@ -29,12 +29,9 @@ app.add_middleware(
 # 3) SessionMiddleware requis pour Authlib (Google OAuth)
 app.add_middleware(SessionMiddleware, secret_key=SECRET_KEY)
 
-# Static files for default and uploaded avatars
-static_dir = Path(__file__).parent / "static"
+# Static files for uploaded avatars
 uploads_dir = Path(__file__).parent / "uploads"
-static_dir.mkdir(parents=True, exist_ok=True)
 uploads_dir.mkdir(parents=True, exist_ok=True)
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # 4) Importer les routers APRÈS le chargement du .env et les middlewares
