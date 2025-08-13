@@ -147,7 +147,7 @@ def _maybe_play_bot(
     move_tiles, _ = move
     if move_tiles:
         try:
-            bot_score = place_tiles(move_tiles)
+            bot_score, _words = place_tiles(move_tiles)
             logger.info(
                 "Game %s bot placed tiles %s scoring %s",
                 game_id,
@@ -350,7 +350,7 @@ def play_move(
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     try:
-        score = place_tiles(
+        score, words = place_tiles(
             [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
         )
     except ValueError as exc:  # pragma: no cover - validation passthrough
@@ -386,6 +386,7 @@ def play_move(
 
     state = _state_response(game, players)
     state["score"] = score
+    state["words"] = [{"word": w, "score": s} for w, s in words]
     if bot_move:
         state["bot_move"] = bot_move
         state["bot_score"] = bot_score

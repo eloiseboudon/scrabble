@@ -371,6 +371,9 @@
             return
           }
           const data = await res.json()
+          if (data.words && data.words.length) {
+            alert(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+          }
           result.value = `Score : ${data.score}`
           gameRef.value.lockTiles(placements.value)
           placements.value = []
