@@ -80,6 +80,13 @@ class Tile(BaseModel):
     letter: str
 
 
+class PlayerSummary(BaseModel):
+    player_id: int
+    user_id: int | None = None
+    is_computer: bool = False
+    avatar_url: str | None = None
+
+
 class GameState(BaseModel):
     rack: list[str]
     tiles: list[Tile]
@@ -88,6 +95,7 @@ class GameState(BaseModel):
     scores: dict[int, int]
     passes_in_a_row: int
     phase: str
+    players: list[PlayerSummary] | None = None
 
 
 def _state_response(
@@ -488,6 +496,15 @@ def get_game_state(
     players, _bot_move, _bot_score = _maybe_play_bot(game_id, game, db)
     tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
     state = _state_response(game, players)
+    infos = [
+        {
+            "player_id": p.id,
+            "user_id": p.user_id,
+            "is_computer": p.is_computer,
+            "avatar_url": p.user.avatar_url if p.user else None,
+        }
+        for p in players
+    ]
     return GameState(
         rack=list(player.rack),
         tiles=[Tile(row=t.x, col=t.y, letter=t.letter) for t in tiles],
@@ -496,6 +513,7 @@ def get_game_state(
         scores=state["scores"],
         passes_in_a_row=state["passes_in_a_row"],
         phase=state["phase"],
+        players=infos,
     )
 
 
