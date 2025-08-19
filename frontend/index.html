@@ -65,8 +65,12 @@
         const wordValid = Vue.ref(false)
         const result = Vue.ref('')
         const currentWord = Vue.ref('')
+        const userName = Vue.ref('')
+        const opponentName = Vue.ref('')
         const score = Vue.ref(0)
         const score_adversaire = Vue.ref(0)
+        const userAvatar = Vue.ref('')
+        const opponentAvatar = Vue.ref('')
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
         const popup = Vue.ref(null)
@@ -144,31 +148,32 @@
         }
 
         async function checkAuth() {
-          if (userId.value) {
-            startAuthHeartbeat()
-            loadGames()
-            return
-          }
           try {
             const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             if (res.ok) {
               const data = await res.json()
               userId.value = data.user_id
               localStorage.setItem('userId', data.user_id)
+              document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
+              userAvatar.value = data.avatar_url
+              userName.value = data.display_name
+              opponentName.value = data.display_name ? data.display_name : 'Bot'
               startAuthHeartbeat()
               loadGames()
+            } else {
+              userId.value = null
+              localStorage.removeItem('userId')
             }
           } catch (err) {
             // ignore
           }
         }
 
-        function onAuth(id) {
+        async function onAuth(id) {
           userId.value = id
           localStorage.setItem('userId', id)
           view.value = 'home'
-          startAuthHeartbeat()
-          loadGames()
+          await checkAuth()
         }
 
         async function logout() {
@@ -216,6 +221,7 @@
           result.value = ''
           score.value = 0
           score_adversaire.value = 0
+          opponentAvatar.value = '/img/icone/avatars/robot.svg'
           const game = { id: game_id, player_id, vsBot: true }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -229,6 +235,9 @@
             return
           }
           const { user_id: friendId } = await resUser.json()
+          const resAvatar = await fetch(`${API_BASE}/users/${friendId}`)
+          const friendData = await resAvatar.json()
+          opponentAvatar.value = friendData.avatar_url
           const resGame = await fetch('http://localhost:8000/games', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -275,6 +284,10 @@
           score.value = data.scores[game.player_id] || 0
           const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
           score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+          const opp = data.players?.find(p => p.player_id !== game.player_id)
+          if (opp) {
+            opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+          }
 
           view.value = 'game'
           await Vue.nextTick() // assure que <Game> et <Grid> sont montés
@@ -417,6 +430,10 @@
             score.value = stateData.scores[currentGame.value.player_id] || 0
             const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
             score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
           }
           if (currentGame.value?.vsBot) {
             await runBotThinking(popup, execute)
@@ -456,6 +473,10 @@
             score.value = stateData.scores[currentGame.value.player_id] || 0
             const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
             score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
           }
           if (currentGame.value?.vsBot) {
             await runBotThinking(popup, execute)
@@ -493,6 +514,8 @@
           logout,
           score,
           score_adversaire,
+          userAvatar,
+          opponentAvatar,
           wordValid,
           popup,
           onPopupConfirm,
@@ -514,6 +537,8 @@
                 :result="result"
                 :score="score"
                 :score_adversaire="score_adversaire"
+                :player-avatar="userAvatar"
+                :opponent-avatar="opponentAvatar"
                 :letter-points="LETTER_POINTS"
                 :word-valid="wordValid"
                 @home="goHome"

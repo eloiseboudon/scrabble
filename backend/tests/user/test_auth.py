@@ -38,6 +38,7 @@ def test_auth_flow() -> None:
     assert r.status_code == 200
     assert r.json()["email"] == email
     assert r.json()["color_palette"] == "palette1"
+    assert r.json()["avatar_url"] == "/img/icone/avatars/default1.svg"
 
     # Update palette
     r = client.post("/auth/me/palette", json={"palette": "palette2"})
@@ -52,3 +53,8 @@ def test_auth_flow() -> None:
     assert r.status_code == 200
     assert client.cookies.get("access_token") is None
     assert client.cookies.get("refresh_token") is None
+
+    # Public user info endpoint returns avatar
+    r = client.get(f"/users/{user_id}")
+    assert r.status_code == 200
+    assert r.json()["avatar_url"] == "/img/icone/avatars/default1.svg"
