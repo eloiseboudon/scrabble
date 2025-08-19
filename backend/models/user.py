@@ -2,7 +2,10 @@ from datetime import datetime
 from typing import List
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 from base import Base, TimestampMixin
+=======
+>>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
 from sqlalchemy import DateTime, ForeignKey, String
