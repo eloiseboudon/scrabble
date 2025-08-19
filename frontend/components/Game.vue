@@ -56,7 +56,9 @@ const props = defineProps({
   score_adversaire: { type: Number, default: 0 },
   wordValid: { type: Boolean, default: false },
   playerAvatar: { type: String, default: '' },
-  opponentAvatar: { type: String, default: '' }
+  opponentAvatar: { type: String, default: '' },
+  userName: { type: String, default: '' },
+  opponentName: { type: String, default: '' }
 })
 
 const emit = defineEmits([

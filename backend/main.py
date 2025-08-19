@@ -35,7 +35,7 @@ uploads_dir.mkdir(parents=True, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 # 4) Importer les routers APRÈS le chargement du .env et les middlewares
-from .api import auth, games, health, deletion  # noqa: E402
+from api import auth, deletion, games, health  # noqa: E402
 
 app.include_router(health.router)
 app.include_router(auth.router)

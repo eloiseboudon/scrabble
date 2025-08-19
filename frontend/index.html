@@ -156,8 +156,6 @@
               localStorage.setItem('userId', data.user_id)
               document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
               userAvatar.value = data.avatar_url
-              userName.value = data.display_name
-              opponentName.value = data.display_name ? data.display_name : 'Bot'
               startAuthHeartbeat()
               loadGames()
             } else {
@@ -222,6 +220,8 @@
           score.value = 0
           score_adversaire.value = 0
           opponentAvatar.value = '/img/icone/avatars/robot.svg'
+          userName.value = userName.value
+          opponentName.value = 'Bot'
           const game = { id: game_id, player_id, vsBot: true }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -284,6 +284,8 @@
           score.value = data.scores[game.player_id] || 0
           const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
           score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+          userName.value = data.players.find(p => p.player_id === game.player_id).display_name
+          opponentName.value = data.players.find(p => p.player_id !== game.player_id).display_name
           const opp = data.players?.find(p => p.player_id !== game.player_id)
           if (opp) {
             opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
