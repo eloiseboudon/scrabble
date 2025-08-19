@@ -1,13 +1,7 @@
 from datetime import datetime
 from typing import List
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
 from base import Base, TimestampMixin
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
