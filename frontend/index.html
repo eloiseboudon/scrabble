@@ -15,6 +15,9 @@
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
     import { LETTER_POINTS } from './letterPoints.js'
     import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
+    import { runBotThinking } from './botThinking.js'
+    import { showInvalidWords } from './invalidWords.js'
+    import { collectWords } from './validateWords.js'
 
     const API_BASE = 'http://localhost:8000'
 
@@ -48,9 +51,10 @@
     const Settings = await loadModule('./components/Settings.vue', options)
     const Profile = await loadModule('./components/Profile.vue', options)
     const Login = await loadModule('./components/Login.vue', options)
+    const Popup = await loadModule('./components/Popup.vue', options)
 
     const App = {
-      components: { Grid, Home, Game, Settings, Profile, Login },
+      components: { Grid, Home, Game, Settings, Profile, Login, Popup },
       setup() {
         const view = Vue.ref('home')
         const userId = Vue.ref(localStorage.getItem('userId'))
@@ -58,11 +62,82 @@
         const finishedGames = Vue.ref([])
         const rack = Vue.ref([])
         const placements = Vue.ref([])
+        const wordValid = Vue.ref(false)
         const result = Vue.ref('')
+        const currentWord = Vue.ref('')
+        const userName = Vue.ref('')
+        const opponentName = Vue.ref('')
         const score = Vue.ref(0)
         const score_adversaire = Vue.ref(0)
+        const userAvatar = Vue.ref('')
+        const opponentAvatar = Vue.ref('')
         const gameRef = Vue.ref(null)
         const currentGame = Vue.ref(null)
+        const popup = Vue.ref(null)
+
+        function alertApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'alert', message, resolve }
+          })
+        }
+
+        function confirmApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'confirm', message, resolve }
+          })
+        }
+
+        function promptApp(message) {
+          return new Promise(resolve => {
+            popup.value = { type: 'prompt', message, value: '', resolve }
+          })
+        }
+
+        function onPopupConfirm(value) {
+          if (popup.value) {
+            const { resolve, type } = popup.value
+            resolve(type === 'prompt' ? value : true)
+            popup.value = null
+          }
+        }
+
+        function onPopupCancel() {
+          if (popup.value) {
+            const { resolve, type } = popup.value
+            resolve(type === 'prompt' ? null : false)
+            popup.value = null
+          }
+        }
+
+        window.appAlert = alertApp
+        window.appConfirm = confirmApp
+        window.appPrompt = promptApp
+
+        async function validateWord() {
+          const words = collectWords(gameRef.value.getTile, placements.value)
+          if (words.length === 0) {
+            wordValid.value = false
+            currentWord.value = ''
+            return
+          }
+
+          currentWord.value = words[0]
+
+          try {
+            const results = await Promise.all(
+              words.map(w =>
+                fetch(`http://localhost:8000/validate?word=${encodeURIComponent(w)}`)
+                  .then(r => r.json())
+                  .then(d => d.valid)
+              )
+            )
+            wordValid.value = results.every(Boolean)
+          } catch {
+            wordValid.value = false
+          }
+        }
+
+        Vue.watch(placements, validateWord, { deep: true })
 
         async function loadGames() {
           if (!userId.value) return
@@ -73,31 +148,32 @@
         }
 
         async function checkAuth() {
-          if (userId.value) {
-            startAuthHeartbeat()
-            loadGames()
-            return
-          }
           try {
             const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             if (res.ok) {
               const data = await res.json()
               userId.value = data.user_id
               localStorage.setItem('userId', data.user_id)
+              document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
+              userAvatar.value = data.avatar_url
+              userName.value = data.display_name
+              opponentName.value = data.display_name ? data.display_name : 'Bot'
               startAuthHeartbeat()
               loadGames()
+            } else {
+              userId.value = null
+              localStorage.removeItem('userId')
             }
           } catch (err) {
             // ignore
           }
         }
 
-        function onAuth(id) {
+        async function onAuth(id) {
           userId.value = id
           localStorage.setItem('userId', id)
           view.value = 'home'
-          startAuthHeartbeat()
-          loadGames()
+          await checkAuth()
         }
 
         async function logout() {
@@ -145,7 +221,8 @@
           result.value = ''
           score.value = 0
           score_adversaire.value = 0
-          const game = { id: game_id, player_id }
+          opponentAvatar.value = '/img/icone/avatars/robot.svg'
+          const game = { id: game_id, player_id, vsBot: true }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
@@ -154,10 +231,13 @@
         async function newGameFriend(pseudo) {
           const resUser = await fetch(`http://localhost:8000/users/by-username?username=${encodeURIComponent(pseudo)}`)
           if (!resUser.ok) {
-            alert('Utilisateur introuvable')
+            await alertApp('Utilisateur introuvable')
             return
           }
           const { user_id: friendId } = await resUser.json()
+          const resAvatar = await fetch(`${API_BASE}/users/${friendId}`)
+          const friendData = await resAvatar.json()
+          opponentAvatar.value = friendData.avatar_url
           const resGame = await fetch('http://localhost:8000/games', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -185,7 +265,7 @@
           result.value = ''
           score.value = 0
           score_adversaire.value = 0
-          const game = { id: game_id, player_id }
+          const game = { id: game_id, player_id, vsBot: false }
           ongoingGames.value.push(game)
           currentGame.value = game
           view.value = 'game'
@@ -204,6 +284,10 @@
           score.value = data.scores[game.player_id] || 0
           const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
           score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+          const opp = data.players?.find(p => p.player_id !== game.player_id)
+          if (opp) {
+            opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+          }
 
           view.value = 'game'
           await Vue.nextTick() // assure que <Game> et <Grid> sont montés
@@ -251,11 +335,11 @@
           }
         }
 
-        function placed(payload) {
+        async function placed(payload) {
           rack.value.splice(payload.index, 1)
           if (payload.letter === '?') {
             const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-            let choice = prompt(`Choisissez une lettre pour le joker:\n${letters}`)
+            let choice = await promptApp(`Choisissez une lettre pour le joker:\n${letters}`)
             if (!choice) {
               rack.value.splice(payload.index, 0, '?')
               gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
@@ -282,11 +366,11 @@
         }
 
         function moved(payload) {
-          const { fromRow, fromCol, toRow, toCol } = payload
-          const i = placements.value.findIndex(p => p.row === fromRow && p.col === fromCol)
+          const { from, to } = payload
+          const i = placements.value.findIndex(p => p.row === from.row && p.col === from.col)
           if (i !== -1) {
-            placements.value[i].row = toRow
-            placements.value[i].col = toCol
+            placements.value[i].row = to.row
+            placements.value[i].col = to.col
           }
         }
 
@@ -305,44 +389,100 @@
 
         async function play() {
           if (placements.value.length === 0) return
-          const res = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}/play`,
-            {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                player_id: currentGame.value.player_id,
-                placements: placements.value
+          const execute = async () => {
+            const res = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}/play`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  player_id: currentGame.value.player_id,
+                  placements: placements.value
+                })
+              }
+            )
+            if (!res.ok) {
+              const err = await res.json()
+              const words = await showInvalidWords(alertApp, err.detail, currentWord.value)
+              if (!words.length) {
+                await alertApp(err.detail || 'Coup invalide')
+              }
+              result.value = err.detail || 'Coup invalide'
+              return
+            }
+            const data = await res.json()
+            if (data.words && data.words.length) {
+              await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+            }
+            result.value = `Score : ${data.score}`
+            gameRef.value.lockTiles(placements.value)
+            placements.value = []
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
               })
             }
-          )
-          if (!res.ok) {
-            const err = await res.json()
-            result.value = err.detail || 'Coup invalide'
-            return
+            const stateRes = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+            )
+            const stateData = await stateRes.json()
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
           }
-          const data = await res.json()
-          result.value = `Score : ${data.score}`
-          gameRef.value.lockTiles(placements.value)
-          placements.value = []
-          if (data.bot_move) {
-            data.bot_move.forEach(([row, col, letter, blank]) => {
-              gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-            })
+          if (currentGame.value?.vsBot) {
+            await runBotThinking(popup, execute)
+          } else {
+            await execute()
           }
-          const stateRes = await fetch(
-            `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
-          )
-          const stateData = await stateRes.json()
-          rack.value = stateData.rack
-          score.value = stateData.scores[currentGame.value.player_id] || 0
-          const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-          score_adversaire.value = advId ? stateData.scores[advId] : 0
         }
 
-        function passTurn() {
+        async function passTurn() {
           clearMove()
-          result.value = 'Tour passé'
+          const execute = async () => {
+            const res = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}/pass`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ player_id: currentGame.value.player_id })
+              }
+            )
+            if (!res.ok) {
+              const err = await res.json()
+              result.value = err.detail || 'Action impossible'
+              return
+            }
+            const data = await res.json()
+            result.value = 'Tour passé'
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+              })
+            }
+            const stateRes = await fetch(
+              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+            )
+            const stateData = await stateRes.json()
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
+          }
+          if (currentGame.value?.vsBot) {
+            await runBotThinking(popup, execute)
+          } else {
+            await execute()
+          }
         }
 
         checkAuth()
@@ -373,7 +513,13 @@
           onAuth,
           logout,
           score,
-          score_adversaire
+          score_adversaire,
+          userAvatar,
+          opponentAvatar,
+          wordValid,
+          popup,
+          onPopupConfirm,
+          onPopupCancel
         }
       },
       template: `
@@ -391,7 +537,10 @@
                 :result="result"
                 :score="score"
                 :score_adversaire="score_adversaire"
+                :player-avatar="userAvatar"
+                :opponent-avatar="opponentAvatar"
                 :letter-points="LETTER_POINTS"
+                :word-valid="wordValid"
                 @home="goHome"
                 @finish="finishGame"
                 @placed="placed"
@@ -405,6 +554,7 @@
                 @pass="passTurn" />
           <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
           <Settings v-else-if="view==='settings'" @back="view='home'" />
+          <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
         `
     }
 

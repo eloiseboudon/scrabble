@@ -18,9 +18,26 @@
             <span class="info-label">Pseudo</span>
             <span class="info-value">{{ user.display_name || 'Non défini' }}</span>
           </div>
-          <div class="info-item">
+          <div class="info-item avatar-picker">
             <span class="info-label">Avatar</span>
-            <span class="info-value">{{ user.avatar_url || 'Aucun' }}</span>
+            <div class="avatar-content">
+              <img
+                v-if="user.avatar_url"
+                :src="user.avatar_url"
+                alt="avatar"
+                class="avatar-img"
+              />
+              <div class="avatar-options">
+                <img
+                  v-for="a in defaultAvatars"
+                  :key="a"
+                  :src="a"
+                  class="avatar-option"
+                  @click="selectAvatar(a)"
+                />
+              </div>
+              <input type="file" accept="image/*" @change="onFileChange" />
+            </div>
           </div>
           <div class="info-item palette-picker">
             <span class="info-label">Palette</span>
@@ -102,6 +119,10 @@ const palettes = [
   { name: 'palette5', colors: ['#a78bfa', '#f59e0b'] }
 ]
 const selected = ref('palette1')
+const defaultAvatars = Array.from(
+  { length: 5 },
+  (_, i) => `/img/icone/avatars/default${i + 1}.svg`
+)
 
 onMounted(async () => {
   try {
@@ -123,6 +144,44 @@ function selectPalette(palette) {
   updatePalette()
 }
 
+async function onFileChange(e) {
+  const file = e.target.files[0]
+  if (!file) return
+  const form = new FormData()
+  form.append('file', file)
+  try {
+    const res = await fetch('http://localhost:8000/auth/me/avatar', {
+      method: 'POST',
+      credentials: 'include',
+      body: form
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (user.value) user.value.avatar_url = data.avatar_url
+    }
+  } catch (err) {
+    console.error('Erreur upload avatar:', err)
+  }
+}
+
+async function selectAvatar(url) {
+  const form = new FormData()
+  form.append('choice', url.split('/').pop())
+  try {
+    const res = await fetch('http://localhost:8000/auth/me/avatar', {
+      method: 'POST',
+      credentials: 'include',
+      body: form
+    })
+    if (res.ok) {
+      const data = await res.json()
+      if (user.value) user.value.avatar_url = data.avatar_url
+    }
+  } catch (err) {
+    console.error('Erreur sélection avatar:', err)
+  }
+}
+
 async function updatePalette() {
   document.documentElement.setAttribute('data-theme', selected.value)
   try {
@@ -139,7 +198,8 @@ async function updatePalette() {
 }
 
 async function deleteAccount() {
-  if (!confirm('Êtes-vous sûr de vouloir supprimer votre compte ?')) {
+  const confirmed = await window.appConfirm('Êtes-vous sûr de vouloir supprimer votre compte ?')
+  if (!confirmed) {
     return
   }
   try {
@@ -148,7 +208,7 @@ async function deleteAccount() {
       credentials: 'include',
     })
     emit('logout')
-    alert('Demande de suppression enregistrée')
+    await window.appAlert('Demande de suppression enregistrée')
   } catch (err) {
     console.error('Erreur lors de la suppression du compte:', err)
   }
@@ -293,6 +353,36 @@ async function deleteAccount() {
 
 .palette-option.active {
   border-color: var(--color-title);
+}
+
+.avatar-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.avatar-img {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+}
+
+.avatar-options {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+.avatar-option {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.avatar-option:hover {
+  transform: scale(1.1);
 }
 
 .swatch {

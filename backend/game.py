@@ -249,11 +249,13 @@ def _score_word(
     return score * word_multiplier
 
 
-def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
+def place_tiles(
+    placements: List[Tuple[int, int, str, bool]]
+) -> Tuple[int, List[Tuple[str, int]]]:
     """Place tiles on the board according to *placements*.
 
     Each placement is (row, col, letter, blank).
-    Returns the score for the move or raises ValueError if the move is invalid."""
+    Returns a tuple (total_score, [(word, score), ...]) or raises ValueError if the move is invalid."""
     global first_move
 
     if not placements:
@@ -331,6 +333,22 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
                 board[rr][cc] = None
             raise ValueError("Move must connect to existing tiles")
 
+    # Ajuster l'orientation si une seule tuile est posée en fonction des voisins
+    if len(placements) == 1:
+        r0, c0, _ltr, _blk = placements[0]
+        horiz_neighbor = (
+            (c0 > 0 and board[r0][c0 - 1] is not None)
+            or (c0 + 1 < BOARD_SIZE and board[r0][c0 + 1] is not None)
+        )
+        vert_neighbor = (
+            (r0 > 0 and board[r0 - 1][c0] is not None)
+            or (r0 + 1 < BOARD_SIZE and board[r0 + 1][c0] is not None)
+        )
+        if vert_neighbor and not horiz_neighbor:
+            horizontal = False
+        elif horiz_neighbor and not vert_neighbor:
+            horizontal = True
+
     # ----- 4) Déterminer le mot principal -----
     if horizontal:
         r = next(iter(rows))
@@ -354,7 +372,7 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
 
     # ----- 6) Construire et valider tous les mots secondaires -----
     # (le cœur du correctif : on vérifie les mots croisés formés par chaque tuile posée)
-    cross_coords_list: List[List[Tuple[int, int]]] = []
+    cross_words: List[Tuple[str, List[Tuple[int, int]]]] = []
     for r, c, _, _ in placements:
         if horizontal:
             # le mot secondaire est vertical à cette colonne
@@ -388,19 +406,23 @@ def place_tiles(placements: List[Tuple[int, int, str, bool]]) -> int:
                 for rr, cc in used_positions:
                     board[rr][cc] = None
                 raise ValueError(f"Invalid cross word: {word}")
-            cross_coords_list.append(coords)
+            cross_words.append((word.upper(), coords))
 
     # ----- 7) Calcul du score : mot principal + tous les mots secondaires -----
-    total = _score_word(main_coords, used_positions)
-    for coords in cross_coords_list:
-        total += _score_word(coords, used_positions)
+    main_score = _score_word(main_coords, used_positions)
+    word_scores: List[Tuple[str, int]] = [(main_word.upper(), main_score)]
+    total = main_score
+    for word, coords in cross_words:
+        score = _score_word(coords, used_positions)
+        total += score
+        word_scores.append((word, score))
     # Bingo: 50 points si 7 tuiles posées en un seul coup
     if len(placements) == 7:
         total += 50
     # ----- 8) Fin de coup OK -----
     # (ici tu peux conserver ton éventuel bonus de scrabble/bingo si tu l'avais ailleurs)
     first_move = False
-    return total
+    return total, word_scores
 
 
 def bot_turn(rack: List[str]) -> Optional[Tuple[List[Tuple[int, int, str, bool]], int]]:

@@ -9,16 +9,9 @@
       @moved="emit('moved', $event)" />
 
     <div class="rack" @dragover.prevent @drop="$emit('rack-drop', $event, rack.length)">
-      <div
-        v-for="(letter, idx) in rack"
-        :key="idx"
-        class="tile"
-        draggable="true"
-        @dragstart="$emit('drag-start', $event, idx)"
-        @dragover.prevent
-        @drop="$emit('rack-drop', $event, idx)"
-        @touchstart.prevent="onTouchStart(idx, $event)"
-      >
+      <div v-for="(letter, idx) in rack" :key="idx" class="tile" draggable="true"
+        @dragstart="$emit('drag-start', $event, idx)" @dragover.prevent @drop="$emit('rack-drop', $event, idx)"
+        @touchstart.prevent="onTouchStart(idx, $event)">
         <span class="letter">{{ letter }}</span>
         <span class="points">{{ letterPoints[letter] }}</span>
       </div>
@@ -27,8 +20,14 @@
 
     <div class="validation">
       <div class="score">
-        Toi {{ score }} <br>
-        Adversaire {{ score_adversaire }}
+        <div class="score-line">
+          <img v-if="playerAvatar" :src="playerAvatar" alt="avatar" class="avatar" />
+          <span>{{ userName }} {{ score }}</span>
+        </div>
+        <div class="score-line">
+          <img v-if="opponentAvatar" :src="opponentAvatar" alt="avatar adversaire" class="avatar" />
+          <span>{{ opponentName }} {{ score_adversaire }}</span>
+        </div>
       </div>
       <button @click="$emit('clear')">
         Effacer
@@ -36,10 +35,10 @@
       <button @click="$emit('shuffle')">
         Mélanger
       </button>
-      <button v-show="placements" @click="$emit('play')">
-        Jouer
+      <button v-show="placements" @click="onPlay">
+        Jouer <span>{{ props.wordValid ? '▶️' : '❌' }}</span>
       </button>
-      <button v-show="!placements" @click="$emit('pass')">
+      <button v-show="!placements" @click="onPass">
         Passer
       </button>
     </div>
@@ -54,7 +53,10 @@ const props = defineProps({
   result: { type: String, default: '' },
   letterPoints: { type: Object, default: () => ({}) },
   score: { type: Number, default: 0 },
-  score_adversaire: { type: Number, default: 0 }
+  score_adversaire: { type: Number, default: 0 },
+  wordValid: { type: Boolean, default: false },
+  playerAvatar: { type: String, default: '' },
+  opponentAvatar: { type: String, default: '' }
 })
 
 const emit = defineEmits([
@@ -77,6 +79,14 @@ function handlePlaced(payload) {
 function handleRemoved(payload) {
   if (placements.value > 0) placements.value--
   emit('removed', payload)
+}
+
+function onPlay() {
+  if (placements.value > 0) emit('play')
+}
+
+function onPass() {
+  if (placements.value === 0) emit('pass')
 }
 
 // DÉMARRER DRAG TACTILE DEPUIS LE RACK
@@ -184,7 +194,32 @@ function lockTiles(tiles) {
   placements.value = Math.max(0, placements.value - (tiles?.length || placements.value))
 }
 
-defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles })
+function getTile(r, c) {
+  return gridRef.value?.getTile(r, c) || ''
+}
+
+defineExpose({ gridRef, setTile, takeBack, clearAll, lockTiles, getTile })
 
 onBeforeUnmount(() => cleanupDrag())
 </script>
+
+<style scoped>
+.score {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.score-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+</style>

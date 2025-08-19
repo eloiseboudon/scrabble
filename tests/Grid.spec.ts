@@ -74,6 +74,14 @@ describe('Grid.vue', () => {
     expect(w.findAll('.DL').length).toBeGreaterThan(0)
   })
 
+  it('has specific bonus classes at given coordinates', () => {
+    const w = mount(Grid, { props: { letterPoints } })
+    expect(w.find('[data-row="0"][data-col="0"]').classes()).toContain('TW')
+    expect(w.find('[data-row="1"][data-col="1"]').classes()).toContain('DW')
+    expect(w.find('[data-row="1"][data-col="5"]').classes()).toContain('TL')
+    expect(w.find('[data-row="0"][data-col="3"]').classes()).toContain('DL')
+  })
+
   it('places a blank tile and indicates blank=true', async () => {
     const wrapper = mount(Grid, { props: { letterPoints } })
     const center = wrapper.find('.CENTER')

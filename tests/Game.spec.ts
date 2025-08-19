@@ -9,7 +9,7 @@ describe('Game.vue', () => {
 
     function getByText(wrapper: any, selector: string, text: string) {
         const els = wrapper.findAll(selector)
-        const el = els.find(e => e.text().trim() === text)
+        const el = els.find(e => e.text().trim().startsWith(text))
         if (!el) throw new Error(`No ${selector} with text "${text}"`)
         return el
     }
@@ -39,7 +39,7 @@ describe('Game.vue', () => {
         const w = mount(Game, { props: { rack: [], letterPoints: { A: 1 } } })
             ; (w.vm as any).setTile(7, 7, 'A', true)
         await nextTick()
-        const jouerBtn = w.findAll('button').find(b => b.text().trim() === 'Jouer')
+        const jouerBtn = w.findAll('button').find(b => b.text().trim().startsWith('Jouer'))
         expect(jouerBtn?.element.style.display).toBe('none')
         await getByText(w, 'button', 'Passer').trigger('click')
         expect(w.emitted('pass')).toBeTruthy()
@@ -53,12 +53,19 @@ describe('Game.vue', () => {
         expect(w.emitted('play')).toBeTruthy()
     })
 
-    it('expose setTile/takeBack/clearAll/lockTiles', () => {
+    it('clicking Jouer without placements does not emit play', async () => {
+        const w = mount(Game, { props: { rack: [], letterPoints: {} } })
+        await getByText(w, 'button', 'Jouer').trigger('click')
+        expect(w.emitted('play')).toBeFalsy()
+    })
+
+    it('expose setTile/takeBack/clearAll/lockTiles/getTile', () => {
         const w = mount(Game, { props: { rack: [], letterPoints: {} } })
         expect(typeof w.vm.setTile).toBe('function')
         expect(typeof w.vm.takeBack).toBe('function')
         expect(typeof w.vm.clearAll).toBe('function')
         expect(typeof w.vm.lockTiles).toBe('function')
+        expect(typeof w.vm.getTile).toBe('function')
     })
 
     it('affiche les scores joueur/adversaire', () => {
@@ -161,5 +168,25 @@ describe('Game.vue', () => {
         const c78 = row7.findAll('.cell')[8]
         expect(c77.classes('has-letter')).toBe(false)
         expect(c78.classes('has-letter')).toBe(false)
+    })
+
+    it('clicking Passer after a placement does not emit pass', async () => {
+        const w = mount(Game, { props: { rack: ['A'], letterPoints: { A: 1 } } })
+        w.findComponent({ name: 'Grid' }).vm.$emit('placed', { row: 7, col: 7, letter: 'A' })
+        await nextTick()
+        await getByText(w, 'button', 'Passer').trigger('click')
+        expect(w.emitted('pass')).toBeFalsy()
+    })
+
+    it('Effacer après placement vide la grille', async () => {
+        const w = mount(Game, { props: { rack: ['A'], letterPoints: { A: 1 } } })
+        w.findComponent({ name: 'Grid' }).vm.$emit('placed', { row: 7, col: 7, letter: 'A' })
+        await nextTick()
+        await getByText(w, 'button', 'Effacer').trigger('click')
+        expect(w.emitted('clear')).toBeTruthy()
+        ;(w.vm as any).clearAll([{ row: 7, col: 7 }])
+        await nextTick()
+        const center = w.find('.CENTER')
+        expect(center.classes('has-letter')).toBe(false)
     })
 })

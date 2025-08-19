@@ -80,6 +80,13 @@ class Tile(BaseModel):
     letter: str
 
 
+class PlayerSummary(BaseModel):
+    player_id: int
+    user_id: int | None = None
+    is_computer: bool = False
+    avatar_url: str | None = None
+
+
 class GameState(BaseModel):
     rack: list[str]
     tiles: list[Tile]
@@ -88,6 +95,7 @@ class GameState(BaseModel):
     scores: dict[int, int]
     passes_in_a_row: int
     phase: str
+    players: list[PlayerSummary] | None = None
 
 
 def _state_response(
@@ -147,7 +155,7 @@ def _maybe_play_bot(
     move_tiles, _ = move
     if move_tiles:
         try:
-            bot_score = place_tiles(move_tiles)
+            bot_score, _words = place_tiles(move_tiles)
             logger.info(
                 "Game %s bot placed tiles %s scoring %s",
                 game_id,
@@ -350,7 +358,7 @@ def play_move(
     players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
     load_game_state([(t.x, t.y, t.letter) for t in tiles], [p.rack for p in players])
     try:
-        score = place_tiles(
+        score, words = place_tiles(
             [(p.row, p.col, p.letter.upper(), p.blank) for p in req.placements]
         )
     except ValueError as exc:  # pragma: no cover - validation passthrough
@@ -386,6 +394,7 @@ def play_move(
 
     state = _state_response(game, players)
     state["score"] = score
+    state["words"] = [{"word": w, "score": s} for w, s in words]
     if bot_move:
         state["bot_move"] = bot_move
         state["bot_score"] = bot_score
@@ -419,9 +428,34 @@ def exchange_tiles(
 
 
 @router.post("/games/{game_id}/pass")
-def pass_turn(game_id: int, req: PassRequest) -> dict[str, str]:
-    """Pass the current turn."""
-    return {"status": "passed"}
+def pass_turn(
+    game_id: int, req: PassRequest, db: Session = Depends(get_db)
+) -> dict[str, object]:
+    """Pass the current turn and optionally trigger a bot move."""
+    game = db.get(models.Game, game_id)
+    if game is None:
+        raise HTTPException(status_code=404, detail="Game not found")
+    if req.player_id != game.next_player_id:
+        raise HTTPException(status_code=409, detail="not_your_turn")
+
+    players = db.query(models.GamePlayer).filter_by(game_id=game_id).all()
+    players_sorted = sorted(players, key=lambda pl: pl.id)
+    idx = next(i for i, pl in enumerate(players_sorted) if pl.id == req.player_id)
+    game.next_player_id = players_sorted[(idx + 1) % len(players_sorted)].id
+    game.passes_in_a_row += 1
+    db.commit()
+
+    players, bot_move, bot_score = _maybe_play_bot(game_id, game, db)
+    if bot_move:
+        game.passes_in_a_row = 0
+        db.commit()
+
+    state = _state_response(game, players)
+    state["status"] = "passed"
+    if bot_move:
+        state["bot_move"] = bot_move
+        state["bot_score"] = bot_score
+    return state
 
 
 @router.post("/games/{game_id}/challenge")
@@ -462,6 +496,15 @@ def get_game_state(
     players, _bot_move, _bot_score = _maybe_play_bot(game_id, game, db)
     tiles = db.query(models.PlacedTile).filter_by(game_id=game_id).all()
     state = _state_response(game, players)
+    infos = [
+        {
+            "player_id": p.id,
+            "user_id": p.user_id,
+            "is_computer": p.is_computer,
+            "avatar_url": p.user.avatar_url if p.user else None,
+        }
+        for p in players
+    ]
     return GameState(
         rack=list(player.rack),
         tiles=[Tile(row=t.x, col=t.y, letter=t.letter) for t in tiles],
@@ -470,6 +513,7 @@ def get_game_state(
         scores=state["scores"],
         passes_in_a_row=state["passes_in_a_row"],
         phase=state["phase"],
+        players=infos,
     )
 
 

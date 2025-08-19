@@ -1,9 +1,20 @@
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, Tuple
 
 from authlib.integrations.starlette_client import OAuth, OAuthError
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from fastapi.responses import RedirectResponse
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -34,6 +45,9 @@ COOKIE_DOMAIN_ENV = os.getenv("COOKIE_DOMAIN", "").strip()
 PROD_DOMAIN = os.getenv("PROD_DOMAIN", "").strip()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+
+# Default avatar assigned when a user account is created
+DEFAULT_AVATAR_URL = "/img/icone/avatars/default1.svg"
 
 # Google OAuth
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "").strip()
@@ -330,7 +344,11 @@ def register(req: AuthRequest, db: Session) -> int:
     manager.validate_username(username)
     manager.validate_password(req.password)
     hashed = pwd_context.hash(req.password)
-    user = models.User(username=username, hashed_password=hashed)
+    user = models.User(
+        username=username,
+        hashed_password=hashed,
+        avatar_url=DEFAULT_AVATAR_URL,
+    )
     # Champs optionnels
     if hasattr(user, "is_active") and getattr(user, "is_active") is None:
         user.is_active = True
@@ -467,6 +485,51 @@ def update_palette(
     db.add(user)
     db.commit()
     return {"color_palette": user.color_palette}
+
+
+@router.post("/auth/me/avatar")
+async def update_avatar(
+    request: Request,
+    db: Session = Depends(get_db),
+    file: UploadFile | None = File(None),
+    choice: str | None = Form(None),
+) -> dict[str, str]:
+    user = get_current_user(request, db)
+    if file is not None:
+        uploads_dir = (
+            Path(__file__).resolve().parent.parent / "uploads" / "avatars"
+        )
+        uploads_dir.mkdir(parents=True, exist_ok=True)
+        ext = Path(file.filename).suffix or ".png"
+        filename = f"user_{user.id}{ext}"
+        file_path = uploads_dir / filename
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+        user.avatar_url = f"/uploads/avatars/{filename}"
+    elif choice:
+        allowed = {f"default{i}.svg" for i in range(1, 6)}
+        if choice not in allowed:
+            raise HTTPException(status_code=400, detail="Invalid avatar choice")
+        user.avatar_url = f"/img/icone/avatars/{choice}"
+    else:
+        raise HTTPException(status_code=400, detail="No avatar provided")
+    db.add(user)
+    db.commit()
+    return {"avatar_url": user.avatar_url}
+
+
+class PublicUser(BaseModel):
+    user_id: int
+    avatar_url: str | None = None
+
+
+@router.get("/users/{user_id}")
+def get_user_avatar(user_id: int, db: Session = Depends(get_db)) -> PublicUser:
+    user = db.get(models.User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="user_not_found")
+    return PublicUser(user_id=user.id, avatar_url=user.avatar_url)
 
 # Backward compatible alias for tests expecting `me`
 me = me_lookup
