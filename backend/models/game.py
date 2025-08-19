@@ -1,9 +1,9 @@
 from datetime import datetime, timezone
 from typing import List
+
+from base import Base
 from sqlalchemy import CheckConstraint, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-
-from .base import Base
 
 
 class Game(Base):
@@ -20,7 +20,9 @@ class Game(Base):
     started: Mapped[bool] = mapped_column(default=False, nullable=False)
     next_player_id: Mapped[int | None] = mapped_column(nullable=True)
     passes_in_a_row: Mapped[int] = mapped_column(default=0, nullable=False)
-    phase: Mapped[str] = mapped_column(String, default="waiting_players", nullable=False)
+    phase: Mapped[str] = mapped_column(
+        String, default="waiting_players", nullable=False
+    )
 
     __table_args__ = (
         CheckConstraint("max_players >= 2 AND max_players <= 4", name="ck_max_players"),

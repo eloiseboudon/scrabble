@@ -21,8 +21,8 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
-from .. import models
-from ..database import SessionLocal, get_db
+from ..database import get_db
+from ..models import models
 
 # =========================================================
 # Settings (lit à partir de .env, avec compatibilité anciens noms)
@@ -496,9 +496,7 @@ async def update_avatar(
 ) -> dict[str, str]:
     user = get_current_user(request, db)
     if file is not None:
-        uploads_dir = (
-            Path(__file__).resolve().parent.parent / "uploads" / "avatars"
-        )
+        uploads_dir = Path(__file__).resolve().parent.parent / "uploads" / "avatars"
         uploads_dir.mkdir(parents=True, exist_ok=True)
         ext = Path(file.filename).suffix or ".png"
         filename = f"user_{user.id}{ext}"
@@ -530,6 +528,7 @@ def get_user_avatar(user_id: int, db: Session = Depends(get_db)) -> PublicUser:
     if user is None:
         raise HTTPException(status_code=404, detail="user_not_found")
     return PublicUser(user_id=user.id, avatar_url=user.avatar_url)
+
 
 # Backward compatible alias for tests expecting `me`
 me = me_lookup
