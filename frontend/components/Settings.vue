@@ -13,6 +13,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { API_BASE } from '../api.js'
 
 const emit = defineEmits(['back'])
 const palettes = ['palette1', 'palette2', 'palette3', 'palette4', 'palette5']
@@ -20,7 +21,7 @@ const selected = ref('palette1')
 
 onMounted(async () => {
   try {
-    const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
     if (res.ok) {
       const data = await res.json()
       selected.value = data.color_palette || 'palette1'
@@ -34,7 +35,7 @@ onMounted(async () => {
 async function updatePalette() {
   document.documentElement.setAttribute('data-theme', selected.value)
   try {
-    await fetch('http://localhost:8000/auth/me/palette', {
+    await fetch(`${API_BASE}/auth/me/palette`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',

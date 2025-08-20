@@ -108,6 +108,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import { API_BASE } from '../api.js'
 
 const emit = defineEmits(['back', 'logout'])
 const user = ref(null)
@@ -126,12 +127,12 @@ const defaultAvatars = Array.from(
 
 onMounted(async () => {
   try {
-    const res = await fetch('http://localhost:8000/auth/me', { credentials: 'include' })
+    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
     if (res.ok) {
       user.value = await res.json()
       selected.value = user.value.color_palette || 'palette1'
       document.documentElement.setAttribute('data-theme', selected.value)
-      const res2 = await fetch('http://localhost:8000/games/user/' + user.value.user_id, { credentials: 'include' })
+      const res2 = await fetch(`${API_BASE}/games/user/${user.value.user_id}`, { credentials: 'include' })
       Object.assign(user.value, await res2.json())
     }
   } catch (err) {
@@ -150,7 +151,7 @@ async function onFileChange(e) {
   const form = new FormData()
   form.append('file', file)
   try {
-    const res = await fetch('http://localhost:8000/auth/me/avatar', {
+    const res = await fetch(`${API_BASE}/auth/me/avatar`, {
       method: 'POST',
       credentials: 'include',
       body: form
@@ -168,7 +169,7 @@ async function selectAvatar(url) {
   const form = new FormData()
   form.append('choice', url.split('/').pop())
   try {
-    const res = await fetch('http://localhost:8000/auth/me/avatar', {
+    const res = await fetch(`${API_BASE}/auth/me/avatar`, {
       method: 'POST',
       credentials: 'include',
       body: form
@@ -185,7 +186,7 @@ async function selectAvatar(url) {
 async function updatePalette() {
   document.documentElement.setAttribute('data-theme', selected.value)
   try {
-    await fetch('http://localhost:8000/auth/me/palette', {
+    await fetch(`${API_BASE}/auth/me/palette`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -203,7 +204,7 @@ async function deleteAccount() {
     return
   }
   try {
-    await fetch('http://localhost:8000/me/deletion-request', {
+    await fetch(`${API_BASE}/me/deletion-request`, {
       method: 'POST',
       credentials: 'include',
     })
