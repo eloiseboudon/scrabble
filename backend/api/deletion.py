@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from ..database import get_db
 from .. import models
+from ..database import get_db
 from ..deletion import process_due_deletions
 from .auth import get_current_user
 
@@ -13,9 +14,7 @@ GRACE_PERIOD_DAYS = 30
 
 
 @router.post("/me/deletion-request")
-def request_account_deletion(
-    request: Request, db: Session = Depends(get_db)
-) -> dict:
+def request_account_deletion(request: Request, db: Session = Depends(get_db)) -> dict:
     user = get_current_user(request, db)
     existing = db.query(models.DeletionRequest).filter_by(user_id=user.id).first()
     if existing and existing.status in {"pending", "grace"}:

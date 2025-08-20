@@ -18,8 +18,7 @@
     import { runBotThinking } from './botThinking.js'
     import { showInvalidWords } from './invalidWords.js'
     import { collectWords } from './validateWords.js'
-
-    const API_BASE = 'http://localhost:8000'
+    import { API_BASE } from './api.js'
 
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
@@ -126,7 +125,7 @@
           try {
             const results = await Promise.all(
               words.map(w =>
-                fetch(`http://localhost:8000/validate?word=${encodeURIComponent(w)}`)
+                fetch(`${API_BASE}/validate?word=${encodeURIComponent(w)}`)
                   .then(r => r.json())
                   .then(d => d.valid)
               )
@@ -141,7 +140,7 @@
 
         async function loadGames() {
           if (!userId.value) return
-          const res = await fetch(`http://localhost:8000/games?user_id=${userId.value}`)
+          const res = await fetch(`${API_BASE}/games?user_id=${userId.value}`)
           const data = await res.json()
           ongoingGames.value = data.ongoing
           finishedGames.value = data.finished
@@ -156,8 +155,6 @@
               localStorage.setItem('userId', data.user_id)
               document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
               userAvatar.value = data.avatar_url
-              userName.value = data.display_name
-              opponentName.value = data.display_name ? data.display_name : 'Bot'
               startAuthHeartbeat()
               loadGames()
             } else {
@@ -194,24 +191,24 @@
         }
 
         async function newGameBot() {
-          const resGame = await fetch('http://localhost:8000/games', {
+          const resGame = await fetch(`${API_BASE}/games`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ vs_computer: true })
           })
           const { game_id } = await resGame.json()
-          const joinRes = await fetch(`http://localhost:8000/games/${game_id}/join`, {
+          const joinRes = await fetch(`${API_BASE}/games/${game_id}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: Number(userId.value) })
           })
           const { player_id } = await joinRes.json()
-          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+          await fetch(`${API_BASE}/games/${game_id}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_computer: true })
           })
-          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+          const startRes = await fetch(`${API_BASE}/games/${game_id}/start`, {
             method: 'POST'
           })
           const startData = await startRes.json()
@@ -222,6 +219,8 @@
           score.value = 0
           score_adversaire.value = 0
           opponentAvatar.value = '/img/icone/avatars/robot.svg'
+          userName.value = userName.value
+          opponentName.value = 'Bot'
           const game = { id: game_id, player_id, vsBot: true }
           ongoingGames.value.push(game)
           currentGame.value = game
@@ -229,7 +228,7 @@
         }
 
         async function newGameFriend(pseudo) {
-          const resUser = await fetch(`http://localhost:8000/users/by-username?username=${encodeURIComponent(pseudo)}`)
+          const resUser = await fetch(`${API_BASE}/users/by-username?username=${encodeURIComponent(pseudo)}`)
           if (!resUser.ok) {
             await alertApp('Utilisateur introuvable')
             return
@@ -238,24 +237,24 @@
           const resAvatar = await fetch(`${API_BASE}/users/${friendId}`)
           const friendData = await resAvatar.json()
           opponentAvatar.value = friendData.avatar_url
-          const resGame = await fetch('http://localhost:8000/games', {
+          const resGame = await fetch(`${API_BASE}/games`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
           })
           const { game_id } = await resGame.json()
-          const join1 = await fetch(`http://localhost:8000/games/${game_id}/join`, {
+          const join1 = await fetch(`${API_BASE}/games/${game_id}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: Number(userId.value) })
           })
           const { player_id } = await join1.json()
-          await fetch(`http://localhost:8000/games/${game_id}/join`, {
+          await fetch(`${API_BASE}/games/${game_id}/join`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: friendId })
           })
-          const startRes = await fetch(`http://localhost:8000/games/${game_id}/start`, {
+          const startRes = await fetch(`${API_BASE}/games/${game_id}/start`, {
             method: 'POST'
           })
           const startData = await startRes.json()
@@ -275,7 +274,7 @@
           currentGame.value = game
           view.value = 'game'
           await Vue.nextTick()
-          const res = await fetch(`http://localhost:8000/games/${game.id}?player_id=${game.player_id}`)
+          const res = await fetch(`${API_BASE}/games/${game.id}?player_id=${game.player_id}`)
           const data = await res.json()
 
           rack.value = data.rack
@@ -284,6 +283,8 @@
           score.value = data.scores[game.player_id] || 0
           const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
           score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+          userName.value = data.players.find(p => p.player_id === game.player_id).display_name
+          opponentName.value = data.players.find(p => p.player_id !== game.player_id).display_name
           const opp = data.players?.find(p => p.player_id !== game.player_id)
           if (opp) {
             opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
@@ -298,7 +299,7 @@
 
         async function finishGame() {
           if (currentGame.value) {
-            await fetch('http://localhost:8000/finish', {
+            await fetch(`${API_BASE}/finish`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ game_id: currentGame.value.id })
@@ -391,7 +392,7 @@
           if (placements.value.length === 0) return
           const execute = async () => {
             const res = await fetch(
-              `http://localhost:8000/games/${currentGame.value.id}/play`,
+              `${API_BASE}/games/${currentGame.value.id}/play`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -423,7 +424,7 @@
               })
             }
             const stateRes = await fetch(
-              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+              `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
             )
             const stateData = await stateRes.json()
             rack.value = stateData.rack
@@ -446,7 +447,7 @@
           clearMove()
           const execute = async () => {
             const res = await fetch(
-              `http://localhost:8000/games/${currentGame.value.id}/pass`,
+              `${API_BASE}/games/${currentGame.value.id}/pass`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -466,7 +467,7 @@
               })
             }
             const stateRes = await fetch(
-              `http://localhost:8000/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+              `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
             )
             const stateData = await stateRes.json()
             rack.value = stateData.rack

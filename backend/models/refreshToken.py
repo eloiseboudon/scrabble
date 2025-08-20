@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import relationship
 
-from . import Base  # adjust if your Base is defined elsewhere
+from .base import Base
 
 
 def _utcnow():

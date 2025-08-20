@@ -502,6 +502,7 @@ def get_game_state(
             "user_id": p.user_id,
             "is_computer": p.is_computer,
             "avatar_url": p.user.avatar_url if p.user else None,
+            "display_name": p.user.display_name if p.user else None,
         }
         for p in players
     ]

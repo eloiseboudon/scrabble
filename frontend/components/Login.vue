@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { API_BASE } from '../api.js'
 
 const emit = defineEmits(['auth'])
 
@@ -93,7 +94,7 @@ async function submit() {
   const endpoint = isRegister.value ? 'auth/register' : 'auth/login'
 
   try {
-    const res = await fetch(`http://localhost:8000/${endpoint}`, {
+    const res = await fetch(`${API_BASE}/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -123,7 +124,7 @@ function toggle() {
 }
 
 function loginGoogle() {
-  window.location.href = 'http://localhost:8000/auth/google/authorize'
+  window.location.href = `${API_BASE}/auth/google/authorize`
 }
 </script>
 
