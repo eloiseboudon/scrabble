@@ -364,7 +364,7 @@ Group=ubuntu
 WorkingDirectory=$backend_dir
 Environment=PATH=$backend_dir/venv/bin
 Environment=PYTHONPATH=$backend_dir
-ExecStart=$exec_command
+ExecStart=$backend_dir/venv/bin/uvicorn main:app --host 0.0.0.0 --port $BACKEND_PORT
 Restart=always
 RestartSec=3
 
