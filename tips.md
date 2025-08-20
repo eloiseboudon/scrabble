@@ -12,3 +12,12 @@ GRANT
 
 
 sudo ss -tlnp | grep :80
+
+
+
+
+google oauth https://console.cloud.google.com/
+
+
+git rm --cached tips.md
+
