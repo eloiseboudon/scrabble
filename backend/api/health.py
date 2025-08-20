@@ -1,5 +1,6 @@
 from fastapi import APIRouter
-from game import DICTIONARY
+
+from ..game import DICTIONARY
 
 router = APIRouter()
 

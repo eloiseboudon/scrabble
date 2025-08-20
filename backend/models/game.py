@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 from typing import List
 
-from base import Base
 from sqlalchemy import CheckConstraint, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from .base import Base
 
 
 class Game(Base):

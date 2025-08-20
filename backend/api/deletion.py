@@ -3,9 +3,9 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
+from .. import models
 from ..database import get_db
 from ..deletion import process_due_deletions
-from ..models import models
 from .auth import get_current_user
 
 router = APIRouter()

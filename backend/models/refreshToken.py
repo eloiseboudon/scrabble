@@ -2,9 +2,10 @@
 # Make sure Alembic sees it (import the module in env.py or your models __init__).
 from datetime import datetime, timezone
 
-from models import Base  # adjust if your Base is defined elsewhere
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Index, Integer
 from sqlalchemy.orm import relationship
+
+from .base import Base
 
 
 def _utcnow():

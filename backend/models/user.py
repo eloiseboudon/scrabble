@@ -1,9 +1,10 @@
 from datetime import datetime
 from typing import List
 
-from base import Base, TimestampMixin
 from sqlalchemy import DateTime, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from . import Base, TimestampMixin
 
 
 class OAuthAccount(Base):

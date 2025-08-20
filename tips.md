@@ -7,3 +7,8 @@ postgres=# GRANT ALL PRIVILEGES ON DATABASE scrabble_db TO scrabble_user;
 ERROR:  database "scrabble_db" does not exist
 postgres=# GRANT ALL PRIVILEGES ON DATABASE scrabble TO scrabble_user;
 GRANT
+
+
+
+
+sudo ss -tlnp | grep :80

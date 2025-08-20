@@ -21,8 +21,8 @@ from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
+from .. import models
 from ..database import get_db
-from ..models import models
 
 # =========================================================
 # Settings (lit à partir de .env, avec compatibilité anciens noms)
