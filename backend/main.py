@@ -17,19 +17,21 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev_change_me")
 
 app = FastAPI()
 
-# 2) CORS en dev
-ALLOWED_ORIGINS = {
-    FRONTEND_URL,
+# Configure CORS
+ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-}
+    "http://localhost:8000",
+    "http://127.0.0.1:8000"
+]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=list(ALLOWED_ORIGINS),
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 # 3) SessionMiddleware requis pour Authlib (Google OAuth)

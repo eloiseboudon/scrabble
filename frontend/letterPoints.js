@@ -1,4 +1,5 @@
-const LETTER_POINTS = {
+// Make LETTER_POINTS available globally
+window.LETTER_POINTS = {
   "A": 1,
   "B": 3,
   "C": 3,
@@ -27,5 +28,3 @@ const LETTER_POINTS = {
   "Z": 10,
   "?": 0
 };
-
-window.LETTER_POINTS = LETTER_POINTS;
