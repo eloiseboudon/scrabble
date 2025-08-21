@@ -45,9 +45,8 @@
   </div>
 </template>
 <script setup>
-const { onBeforeUnmount, ref } = Vue
-
 import Grid from './Grid.vue'
+const { onBeforeUnmount, ref } = Vue
 
 const props = defineProps({
   rack: { type: Array, default: () => [] },
@@ -58,8 +57,8 @@ const props = defineProps({
   wordValid: { type: Boolean, default: false },
   playerAvatar: { type: String, default: '' },
   opponentAvatar: { type: String, default: '' },
-  userName: { type: String, default: '' },
-  opponentName: { type: String, default: '' }
+  userName: { type: String, default: 'Toi' },
+  opponentName: { type: String, default: 'Adversaire' }
 })
 
 const emit = defineEmits([
