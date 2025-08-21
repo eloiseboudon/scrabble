@@ -45,7 +45,8 @@
   </div>
 </template>
 <script setup>
-import { onBeforeUnmount, ref } from 'vue'
+const { onBeforeUnmount, ref } = Vue
+
 import Grid from './Grid.vue'
 
 const props = defineProps({

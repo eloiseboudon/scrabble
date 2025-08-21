@@ -2,29 +2,18 @@
   <div class="popup-overlay">
     <div class="popup">
       <p class="message">{{ popup.message }}</p>
-      <input
-        v-if="popup.type === 'prompt'"
-        v-model="inputValue"
-        class="popup-input"
-        autofocus
-      />
+      <input v-if="popup.type === 'prompt'" v-model="inputValue" class="popup-input" autofocus />
       <div class="actions" v-if="popup.type !== 'loading'">
-        <button
-          v-if="popup.type !== 'alert'"
-          class="btn cancel"
-          @click="$emit('cancel')"
-        >Annuler</button>
-        <button
-          class="btn confirm"
-          @click="$emit('confirm', inputValue)"
-        >OK</button>
+        <button v-if="popup.type !== 'alert'" class="btn cancel" @click="$emit('cancel')">Annuler</button>
+        <button class="btn confirm" @click="$emit('confirm', inputValue)">OK</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+const { ref, watch } = Vue
+
 const props = defineProps({ popup: Object })
 const inputValue = ref('')
 watch(() => props.popup, p => {
@@ -45,6 +34,7 @@ watch(() => props.popup, p => {
   background: rgba(0, 0, 0, 0.4);
   z-index: 1000;
 }
+
 .popup {
   background: var(--color-surface);
   padding: var(--spacing-lg);
@@ -54,10 +44,12 @@ watch(() => props.popup, p => {
   max-width: 400px;
   text-align: center;
 }
+
 .message {
   margin-bottom: var(--spacing-md);
   color: var(--color-text-primary);
 }
+
 .popup-input {
   width: 100%;
   padding: var(--spacing-sm);
@@ -65,11 +57,13 @@ watch(() => props.popup, p => {
   border: 1px solid #ccc;
   border-radius: var(--radius-sm);
 }
+
 .actions {
   display: flex;
   justify-content: center;
   gap: var(--spacing-md);
 }
+
 .btn {
   padding: var(--spacing-sm) var(--spacing-md);
   border: none;
@@ -78,6 +72,7 @@ watch(() => props.popup, p => {
   background: var(--color-primary);
   color: var(--color-text-primary);
 }
+
 .cancel {
   background: var(--color-secondary);
 }

@@ -50,7 +50,7 @@ defineProps({
   finishedGames: { type: Array, default: () => [] }
 })
 
-import { ref } from 'vue'
+const { ref } = Vue
 
 const emit = defineEmits(['new-game-friend', 'new-game-bot', 'resume', 'navigate'])
 

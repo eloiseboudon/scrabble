@@ -21,20 +21,9 @@
           <div class="info-item avatar-picker">
             <span class="info-label">Avatar</span>
             <div class="avatar-content">
-              <img
-                v-if="user.avatar_url"
-                :src="user.avatar_url"
-                alt="avatar"
-                class="avatar-img"
-              />
+              <img v-if="user.avatar_url" :src="user.avatar_url" alt="avatar" class="avatar-img" />
               <div class="avatar-options">
-                <img
-                  v-for="a in defaultAvatars"
-                  :key="a"
-                  :src="a"
-                  class="avatar-option"
-                  @click="selectAvatar(a)"
-                />
+                <img v-for="a in defaultAvatars" :key="a" :src="a" class="avatar-option" @click="selectAvatar(a)" />
               </div>
               <input type="file" accept="image/*" @change="onFileChange" />
             </div>
@@ -42,19 +31,9 @@
           <div class="info-item palette-picker">
             <span class="info-label">Palette</span>
             <div class="palette-options">
-              <div
-                v-for="p in palettes"
-                :key="p.name"
-                class="palette-option"
-                :class="{ active: selected === p.name }"
-                @click="selectPalette(p.name)"
-              >
-                <span
-                  v-for="c in p.colors"
-                  :key="c"
-                  class="swatch"
-                  :style="{ background: c }"
-                />
+              <div v-for="p in palettes" :key="p.name" class="palette-option" :class="{ active: selected === p.name }"
+                @click="selectPalette(p.name)">
+                <span v-for="c in p.colors" :key="c" class="swatch" :style="{ background: c }" />
               </div>
             </div>
           </div>
@@ -107,7 +86,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+const { onMounted, ref } = Vue
 import { API_BASE } from '../api.js'
 
 const emit = defineEmits(['back', 'logout'])

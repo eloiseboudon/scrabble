@@ -12,7 +12,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+const { onMounted, ref } = Vue
+
 import { API_BASE } from '../api.js'
 
 const emit = defineEmits(['back'])
@@ -54,6 +55,7 @@ async function updatePalette() {
   gap: var(--spacing-lg);
   align-items: center;
 }
+
 .palette-section {
   display: flex;
   flex-direction: column;
