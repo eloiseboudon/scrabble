@@ -1,8 +1,15 @@
 const { protocol, hostname } = window.location;
-const defaultPort = hostname === 'localhost' ? '8000' : '8001';
-export const API_BASE =
-  import.meta.env.VITE_API_BASE || `${protocol}//${hostname}:${defaultPort}`;
 
-console.log('[api] protocol:', protocol, 'hostname:', hostname, 'defaultPort:', defaultPort);
-console.log('[api] using API_BASE:', API_BASE);
+// Configuration pour la production
+const isProduction = hostname === 'app-scrabble.tulip-saas.fr';
+const API_BASE = isProduction
+    ? 'http://app-scrabble.tulip-saas.fr:8001'
+    : `${protocol}//${hostname}:8000`;
+
+console.log('[api] Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
+console.log('[api] hostname:', hostname);
+console.log('[api] API_BASE:', API_BASE);
+
+// Export nommé pour l'import
+export { API_BASE };
 

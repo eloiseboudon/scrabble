@@ -78,8 +78,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
 import { API_BASE } from '../api.js'
+const { ref } = Vue
 
 const emit = defineEmits(['auth'])
 

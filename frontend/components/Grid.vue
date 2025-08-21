@@ -6,8 +6,8 @@
           :class="[board[rowIndex][colIndex], { 'has-letter': !!cell }]" @dragover.prevent
           @drop="onDrop($event, rowIndex, colIndex)" @click="remove(rowIndex, colIndex)"
           :draggable="!!cell && !locked[rowIndex][colIndex]" @dragstart="onDragStart($event, rowIndex, colIndex)"
-          @touchend.prevent="onTouchEnd(rowIndex, colIndex)" @touchmove.prevent
-          :data-row="rowIndex" :data-col="colIndex">
+          @touchend.prevent="onTouchEnd(rowIndex, colIndex)" @touchmove.prevent :data-row="rowIndex"
+          :data-col="colIndex">
           <template v-if="cell">
             <span class="letter">{{ cell.toUpperCase() }}</span>
             <span class="points">{{ cell === cell.toLowerCase() ? 0 : letterPoints[cell.toUpperCase()] }}</span>
@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { computed, defineExpose, ref } from 'vue'
+const { computed, defineExpose, ref } = Vue
 
 const { letterPoints } = defineProps({ letterPoints: { type: Object, required: true } })
 const emit = defineEmits(['placed', 'removed', 'moved'])
