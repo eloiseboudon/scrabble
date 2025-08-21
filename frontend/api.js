@@ -4,7 +4,7 @@ const { protocol, hostname } = window.location;
 const isProduction = hostname === 'app-scrabble.tulip-saas.fr';
 const API_BASE = isProduction
     ? 'http://app-scrabble.tulip-saas.fr:8001'
-    : `${protocol}//${hostname}:8001`;
+    : `${protocol}//${hostname}:8000`;
 
 console.log('[api] Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
 console.log('[api] hostname:', hostname);
