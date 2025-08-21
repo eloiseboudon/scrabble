@@ -13,12 +13,43 @@
   <script type="module">
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
-    import { LETTER_POINTS } from './letterPoints.js'
-    import { startAuthHeartbeat, stopAuthHeartbeat } from './authHeartbeat.js'
-    import { runBotThinking } from './botThinking.js'
-    import { showInvalidWords } from './invalidWords.js'
-    import { collectWords } from './validateWords.js'
-    import { API_BASE } from './api.js'
+    // Chargement des modules avec gestion d'erreur
+    let LETTER_POINTS, startAuthHeartbeat, stopAuthHeartbeat, runBotThinking, showInvalidWords, collectWords, API_BASE;
+    
+    try {
+      const [
+        letterPointsModule,
+        authModule,
+        botModule,
+        invalidModule,
+        validateModule,
+        apiModule
+      ] = await Promise.all([
+        import('./letterPoints.js'),
+        import('./authHeartbeat.js'),
+        import('./botThinking.js'),
+        import('./invalidWords.js'),
+        import('./validateWords.js'),
+        import('./api.js')
+      ]);
+      
+      LETTER_POINTS = letterPointsModule.LETTER_POINTS;
+      startAuthHeartbeat = authModule.startAuthHeartbeat;
+      stopAuthHeartbeat = authModule.stopAuthHeartbeat;
+      runBotThinking = botModule.runBotThinking;
+      showInvalidWords = invalidModule.showInvalidWords;
+      collectWords = validateModule.collectWords;
+      API_BASE = apiModule.API_BASE;
+      
+      console.log('✅ Tous les modules Scrabble chargés avec succès');
+      console.log('🌐 API_BASE configuré:', API_BASE);
+      
+    } catch (error) {
+      console.error('❌ Erreur lors du chargement des modules:', error);
+      // Configuration de fallback
+      API_BASE = 'http://app-scrabble.tulip-saas.fr:8001';
+      console.log('💡 Utilisation API_BASE de fallback:', API_BASE);
+    }
 
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
