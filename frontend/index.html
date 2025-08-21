@@ -90,10 +90,7 @@
         const ref = document.head.getElementsByTagName('style')[0] || null;
         document.head.insertBefore(style, ref);
       },
-      // Ajouter vos variables globales ici
-      globals: {
-        API_BASE: '/api' // ou votre URL d'API
-      }
+      script: { type: 'module' }
     }
 
     const Grid = await loadModule('./components/Grid.vue', options)
