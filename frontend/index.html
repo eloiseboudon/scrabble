@@ -15,7 +15,7 @@
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
     // Chargement des modules avec gestion d'erreur
     let LETTER_POINTS, startAuthHeartbeat, stopAuthHeartbeat, runBotThinking, showInvalidWords, collectWords, API_BASE;
-    
+
     try {
       const [
         letterPointsModule,
@@ -32,7 +32,7 @@
         import('./validateWords.js'),
         import('./api.js')
       ]);
-      
+
       LETTER_POINTS = letterPointsModule.LETTER_POINTS;
       startAuthHeartbeat = authModule.startAuthHeartbeat;
       stopAuthHeartbeat = authModule.stopAuthHeartbeat;
@@ -40,10 +40,10 @@
       showInvalidWords = invalidModule.showInvalidWords;
       collectWords = validateModule.collectWords;
       API_BASE = apiModule.API_BASE;
-      
+
       console.log('✅ Tous les modules Scrabble chargés avec succès');
       console.log('🌐 API_BASE configuré:', API_BASE);
-      
+
     } catch (error) {
       console.error('❌ Erreur lors du chargement des modules:', error);
       // Configuration de fallback
@@ -61,17 +61,38 @@
       }
     })
 
+    // const options = {
+    //   moduleCache: { vue: Vue },
+    //   async getFile(url) {
+    //     const res = await fetch(url)
+    //     if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
+    //     return await res.text()
+    //   },
+    //   addStyle(textContent) {
+    //     const style = Object.assign(document.createElement('style'), { textContent })
+    //     const ref = document.head.getElementsByTagName('style')[0] || null
+    //     document.head.insertBefore(style, ref)
+    //   }
+    // }
+
     const options = {
-      moduleCache: { vue: Vue },
+      moduleCache: {
+        vue: Vue
+      },
       async getFile(url) {
-        const res = await fetch(url)
-        if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
-        return await res.text()
+        const res = await fetch(url);
+        if (!res.ok)
+          throw Object.assign(new Error(res.statusText + ' ' + url), { res });
+        return await res.text();
       },
       addStyle(textContent) {
-        const style = Object.assign(document.createElement('style'), { textContent })
-        const ref = document.head.getElementsByTagName('style')[0] || null
-        document.head.insertBefore(style, ref)
+        const style = Object.assign(document.createElement('style'), { textContent });
+        const ref = document.head.getElementsByTagName('style')[0] || null;
+        document.head.insertBefore(style, ref);
+      },
+      // Ajouter vos variables globales ici
+      globals: {
+        API_BASE: '/api' // ou votre URL d'API
       }
     }
 
