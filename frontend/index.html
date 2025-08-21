@@ -148,6 +148,8 @@
 
         async function checkAuth() {
           try {
+            console.log(import.meta.env);
+            console.log(API_BASE);
             const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
             if (res.ok) {
               const data = await res.json()
