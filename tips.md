@@ -21,3 +21,6 @@ google oauth https://console.cloud.google.com/
 
 git rm --cached tips.md
 
+sudo nano home/ubuntu/scrabble/.env
+
+chmod +x deploy-scrabble.sh
