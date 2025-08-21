@@ -13,7 +13,7 @@
 
 <script setup>
 import { API_BASE } from '../api.js'
-const { ref, onMounted } = Vue
+import { ref, onMounted } from 'vue'
 
 const emit = defineEmits(['back'])
 const palettes = ['palette1', 'palette2', 'palette3', 'palette4', 'palette5']

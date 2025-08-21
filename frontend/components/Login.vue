@@ -79,7 +79,7 @@
 
 <script setup>
 import { API_BASE } from '../api.js'
-const { ref } = Vue
+import { ref } from 'vue'
 
 const emit = defineEmits(['auth'])
 
