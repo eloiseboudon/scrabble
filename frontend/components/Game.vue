@@ -45,9 +45,8 @@
   </div>
 </template>
 <script setup>
-const { onBeforeUnmount, ref } = Vue
-
 import Grid from './Grid.vue'
+const { onBeforeUnmount, ref } = Vue
 
 const props = defineProps({
   rack: { type: Array, default: () => [] },
