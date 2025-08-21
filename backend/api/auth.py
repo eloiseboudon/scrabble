@@ -22,7 +22,7 @@ from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..database import get_db
+from ..database import SessionLocal, get_db
 
 # =========================================================
 # Settings (lit à partir de .env, avec compatibilité anciens noms)
