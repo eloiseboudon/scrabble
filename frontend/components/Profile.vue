@@ -87,7 +87,7 @@
 
 <script setup>
 import { API_BASE } from '../api.js'
-const { onMounted, ref } = Vue
+import { onMounted, ref } from 'vue'
 
 const emit = defineEmits(['back', 'logout'])
 const user = ref(null)

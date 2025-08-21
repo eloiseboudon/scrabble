@@ -1,4 +1,4 @@
-function extractInvalidWords(detail, mainWord) {
+export function extractInvalidWords(detail, mainWord) {
   const words = []
   if (!detail) return words
   if (typeof detail === 'string') {
@@ -14,7 +14,7 @@ function extractInvalidWords(detail, mainWord) {
   return words
 }
 
-async function showInvalidWords(alertFn, detail, mainWord) {
+export async function showInvalidWords(alertFn, detail, mainWord) {
   const words = extractInvalidWords(detail, mainWord)
   if (words.length) {
     const msg = words.length > 1

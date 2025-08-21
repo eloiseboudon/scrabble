@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-const { computed, defineExpose, ref } = Vue
+import { computed, ref } from 'vue'
 
 const { letterPoints } = defineProps({ letterPoints: { type: Object, required: true } })
 const emit = defineEmits(['placed', 'removed', 'moved'])

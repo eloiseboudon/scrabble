@@ -45,12 +45,12 @@
 </template>
 
 <script setup>
+import { ref } from 'vue'
+
 defineProps({
   ongoingGames: { type: Array, default: () => [] },
   finishedGames: { type: Array, default: () => [] }
 })
-
-const { ref } = Vue
 
 const emit = defineEmits(['new-game-friend', 'new-game-bot', 'resume', 'navigate'])
 
