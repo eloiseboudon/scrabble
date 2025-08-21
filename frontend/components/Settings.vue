@@ -7,47 +7,42 @@
         <option v-for="p in palettes" :key="p" :value="p">{{ p }}</option>
       </select>
     </div>
-    <button @click="$emit('back')">Retour</button>
+    <button @click="emit('back')">Retour</button>
   </div>
 </template>
 
-<script>
-export default {
-  name: 'Settings',
-  emits: ['back'],
-  data() {
-    return {
-      palettes: ['palette1', 'palette2', 'palette3', 'palette4', 'palette5'],
-      selected: 'palette1',
-      API_BASE: '/api' // Définir directement ici
+<script setup>
+import { API_BASE } from '../api.js'
+const { ref, onMounted } = Vue
+
+const emit = defineEmits(['back'])
+const palettes = ['palette1', 'palette2', 'palette3', 'palette4', 'palette5']
+const selected = ref('palette1')
+
+onMounted(async () => {
+  try {
+    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    if (res.ok) {
+      const data = await res.json()
+      selected.value = data.color_palette || 'palette1'
+      document.documentElement.setAttribute('data-theme', selected.value)
     }
-  },
-  async mounted() {
-    try {
-      const res = await fetch(`${this.API_BASE}/auth/me`, { credentials: 'include' })
-      if (res.ok) {
-        const data = await res.json()
-        this.selected = data.color_palette || 'palette1'
-        document.documentElement.setAttribute('data-theme', this.selected)
-      }
-    } catch (err) {
-      console.error('Erreur chargement palette:', err)
-    }
-  },
-  methods: {
-    async updatePalette() {
-      document.documentElement.setAttribute('data-theme', this.selected)
-      try {
-        await fetch(`${this.API_BASE}/auth/me/palette`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ palette: this.selected })
-        })
-      } catch (err) {
-        console.error('Erreur mise à jour palette:', err)
-      }
-    }
+  } catch (err) {
+    console.error('Erreur chargement palette:', err)
+  }
+})
+
+async function updatePalette() {
+  document.documentElement.setAttribute('data-theme', selected.value)
+  try {
+    await fetch(`${API_BASE}/auth/me/palette`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ palette: selected.value })
+    })
+  } catch (err) {
+    console.error('Erreur mise à jour palette:', err)
   }
 }
 </script>

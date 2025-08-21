@@ -11,5 +11,7 @@ console.log('[api] hostname:', hostname);
 console.log('[api] API_BASE:', API_BASE);
 
 // Export nommé pour l'import
-export { API_BASE };
+// export { API_BASE };
+
+window.API_BASE = API_BASE;
 

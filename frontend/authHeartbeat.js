@@ -1,8 +1,6 @@
-import { API_BASE } from './api.js'
-
 let timer
 
-export function startAuthHeartbeat() {
+function startAuthHeartbeat() {
   stopAuthHeartbeat()
   timer = setInterval(async () => {
     try {
@@ -18,9 +16,12 @@ export function startAuthHeartbeat() {
   }, 12 * 60 * 1000)
 }
 
-export function stopAuthHeartbeat() {
+function stopAuthHeartbeat() {
   if (timer) {
     clearInterval(timer)
     timer = undefined
   }
 }
+
+window.startAuthHeartbeat = startAuthHeartbeat
+window.stopAuthHeartbeat = stopAuthHeartbeat

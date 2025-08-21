@@ -1,4 +1,4 @@
-export const LETTER_POINTS = {
+const LETTER_POINTS = {
   "A": 1,
   "B": 3,
   "C": 3,
@@ -27,3 +27,5 @@ export const LETTER_POINTS = {
   "Z": 10,
   "?": 0
 };
+
+window.LETTER_POINTS = LETTER_POINTS;
