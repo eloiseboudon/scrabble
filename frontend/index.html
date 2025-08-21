@@ -610,8 +610,9 @@
         `
     }
 
-    Vue.createApp(App).mount('#app')
-  </script>
+    const app = Vue.createApp(App)
+    app.component('Grid', Grid)
+    app.mount('#app')  </script>
 </body>
 
 </html>
