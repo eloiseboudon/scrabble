@@ -1,4 +1,4 @@
-export function collectWords(getTile, placements) {
+function collectWords(getTile, placements) {
   if (!placements || placements.length === 0) return []
   const rows = placements.map(p => p.row)
   const cols = placements.map(p => p.col)
@@ -85,3 +85,5 @@ export function collectWords(getTile, placements) {
 
   return [...new Set(words)]
 }
+
+window.collectWords = collectWords;
