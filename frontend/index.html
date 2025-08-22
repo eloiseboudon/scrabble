@@ -10,11 +10,15 @@
 
 <body>
   <div id="app"></div>
-  
+
   <!-- Load configuration and utilities first (non-module) -->
   <script src="api.js"></script>
   <script src="letterPoints.js"></script>
-  
+  <script src="authHeartbeat.js"></script>
+  <script src="validateWords.js"></script>
+  <script src="botThinking.js"></script>
+  <script src="invalidWords.js"></script>
+
   <!-- Load Vue and main app as a module -->
   <script type="module">
     // Import Vue
@@ -134,7 +138,14 @@
         window.appPrompt = promptApp
 
         async function validateWord() {
-          const words = collectWords(gameRef.value.getTile, placements.value)
+          if (!gameRef.value) {
+            wordValid.value = false;
+            currentWord.value = '';
+            return;
+          }
+          console.log('collectWords available:', typeof window.collectWords);
+          const words = window.collectWords(gameRef.value.getTile, placements.value)
+          console.log('collectWords result:', words);
           if (words.length === 0) {
             wordValid.value = false
             currentWord.value = ''
