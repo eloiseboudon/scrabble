@@ -24,3 +24,6 @@ export async function showInvalidWords(alertFn, detail, mainWord) {
   }
   return words
 }
+
+window.extractInvalidWords = extractInvalidWords;
+window.showInvalidWords = showInvalidWords;

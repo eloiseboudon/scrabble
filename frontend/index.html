@@ -10,46 +10,26 @@
 
 <body>
   <div id="app"></div>
+
+  <!-- Load configuration and utilities first (non-module) -->
+  <script src="api.js"></script>
+  <script src="letterPoints.js"></script>
+  <script src="authHeartbeat.js"></script>
+  <script src="validateWords.js"></script>
+  <script src="botThinking.js"></script>
+  <script src="invalidWords.js"></script>
+
+  <!-- Load Vue and main app as a module -->
   <script type="module">
+    // Import Vue
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
-    // Chargement des modules avec gestion d'erreur
-    let LETTER_POINTS, startAuthHeartbeat, stopAuthHeartbeat, runBotThinking, showInvalidWords, collectWords, API_BASE;
 
-    try {
-      const [
-        letterPointsModule,
-        authModule,
-        botModule,
-        invalidModule,
-        validateModule,
-        apiModule
-      ] = await Promise.all([
-        import('./letterPoints.js'),
-        import('./authHeartbeat.js'),
-        import('./botThinking.js'),
-        import('./invalidWords.js'),
-        import('./validateWords.js'),
-        import('./api.js')
-      ]);
+    // Make Vue available globally for non-module scripts
+    window.Vue = Vue;
 
-      LETTER_POINTS = letterPointsModule.LETTER_POINTS;
-      startAuthHeartbeat = authModule.startAuthHeartbeat;
-      stopAuthHeartbeat = authModule.stopAuthHeartbeat;
-      runBotThinking = botModule.runBotThinking;
-      showInvalidWords = invalidModule.showInvalidWords;
-      collectWords = validateModule.collectWords;
-      API_BASE = apiModule.API_BASE;
-
-      console.log('✅ Tous les modules Scrabble chargés avec succès');
-      console.log('🌐 API_BASE configuré:', API_BASE);
-
-    } catch (error) {
-      console.error('❌ Erreur lors du chargement des modules:', error);
-      // Configuration de fallback
-      API_BASE = 'http://app-scrabble.tulip-saas.fr:8001';
-      console.log('💡 Utilisation API_BASE de fallback:', API_BASE);
-    }
+    // Log API_BASE to verify it's available
+    console.log('API_BASE:', window.API_BASE);
 
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
@@ -60,21 +40,6 @@
         }
       }
     })
-
-    // const options = {
-    //   moduleCache: { vue: Vue },
-    //   async getFile(url) {
-    //     const res = await fetch(url)
-    //     if (!res.ok) throw Object.assign(new Error(res.statusText + ' ' + url), { res })
-    //     return await res.text()
-    //   },
-    //   addStyle(textContent) {
-    //     const style = Object.assign(document.createElement('style'), { textContent })
-    //     const ref = document.head.getElementsByTagName('style')[0] || null
-    //     document.head.insertBefore(style, ref)
-    //   }
-    // }
-
     const options = {
       moduleCache: {
         vue: Vue
@@ -83,16 +48,17 @@
         const res = await fetch(url);
         if (!res.ok)
           throw Object.assign(new Error(res.statusText + ' ' + url), { res });
-        return await res.text();
+        return {
+          getContentData: asBinary => asBinary ? res.arrayBuffer() : res.text(),
+        }
       },
       addStyle(textContent) {
         const style = Object.assign(document.createElement('style'), { textContent });
         const ref = document.head.getElementsByTagName('style')[0] || null;
         document.head.insertBefore(style, ref);
       },
-      // Ajouter vos variables globales ici
       globals: {
-        API_BASE: '/api' // ou votre URL d'API
+        API_BASE: '/api'
       }
     }
 
@@ -107,24 +73,31 @@
     const App = {
       components: { Grid, Home, Game, Settings, Profile, Login, Popup },
       setup() {
-        const view = Vue.ref('home')
-        const userId = Vue.ref(localStorage.getItem('userId'))
-        const ongoingGames = Vue.ref([])
-        const finishedGames = Vue.ref([])
-        const rack = Vue.ref([])
-        const placements = Vue.ref([])
-        const wordValid = Vue.ref(false)
-        const result = Vue.ref('')
-        const currentWord = Vue.ref('')
-        const userName = Vue.ref('')
-        const opponentName = Vue.ref('')
-        const score = Vue.ref(0)
-        const score_adversaire = Vue.ref(0)
-        const userAvatar = Vue.ref('')
-        const opponentAvatar = Vue.ref('')
-        const gameRef = Vue.ref(null)
-        const currentGame = Vue.ref(null)
-        const popup = Vue.ref(null)
+        const { ref, onMounted } = Vue;
+
+        const view = ref('home')
+        const userId = ref(localStorage.getItem('userId'))
+        const ongoingGames = ref([])
+        const finishedGames = ref([])
+
+        // Check authentication status on app load
+        onMounted(() => {
+          checkAuth();
+        });
+        const rack = ref([])
+        const placements = ref([])
+        const wordValid = ref(false)
+        const result = ref('')
+        const currentWord = ref('')
+        const userName = ref('')
+        const opponentName = ref('')
+        const score = ref(0)
+        const score_adversaire = ref(0)
+        const userAvatar = ref('')
+        const opponentAvatar = ref('')
+        const gameRef = ref(null)
+        const currentGame = ref(null)
+        const popup = ref(null)
 
         function alertApp(message) {
           return new Promise(resolve => {
@@ -165,7 +138,14 @@
         window.appPrompt = promptApp
 
         async function validateWord() {
-          const words = collectWords(gameRef.value.getTile, placements.value)
+          if (!gameRef.value) {
+            wordValid.value = false;
+            currentWord.value = '';
+            return;
+          }
+          console.log('collectWords available:', typeof window.collectWords);
+          const words = window.collectWords(gameRef.value.getTile, placements.value)
+          console.log('collectWords result:', words);
           if (words.length === 0) {
             wordValid.value = false
             currentWord.value = ''
@@ -200,23 +180,38 @@
 
         async function checkAuth() {
           try {
-            console.log(import.meta.env);
-            console.log(API_BASE);
-            const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
-            if (res.ok) {
-              const data = await res.json()
-              userId.value = data.user_id
-              localStorage.setItem('userId', data.user_id)
-              document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1')
-              userAvatar.value = data.avatar_url
-              startAuthHeartbeat()
-              loadGames()
-            } else {
-              userId.value = null
-              localStorage.removeItem('userId')
+            const res = await fetch(`${API_BASE}/auth/me`, {
+              credentials: 'include',
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (!res.ok) {
+              if (res.status === 401) {
+                // Expected when not logged in
+                console.debug('User not authenticated, showing login screen');
+              } else {
+                console.error('Authentication check failed with status:', res.status);
+              }
+              throw new Error('Not authenticated');
             }
+
+            const data = await res.json();
+            userId.value = data.user_id;
+            localStorage.setItem('userId', data.user_id);
+            document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1');
+            userAvatar.value = data.avatar_url;
+            startAuthHeartbeat();
+            await loadGames();
+            return true;
           } catch (err) {
-            // ignore
+            if (err.message !== 'Not authenticated') {
+              console.error('Unexpected error during authentication check:', err);
+            }
+            userId.value = null;
+            localStorage.removeItem('userId');
+            return false;
           }
         }
 

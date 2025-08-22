@@ -6,3 +6,5 @@ export async function runBotThinking(popupRef, fn) {
     popupRef.value = null
   }
 }
+
+window.runBotThinking = runBotThinking;

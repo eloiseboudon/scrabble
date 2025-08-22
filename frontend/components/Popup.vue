@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-const { ref, watch } = Vue
+import { ref, watch } from 'vue'
 
 const props = defineProps({ popup: Object })
 const inputValue = ref('')
