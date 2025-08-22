@@ -1,4 +1,6 @@
-import { collectWords } from '@/validateWords.js'
+import '@/public/validateWords.js'
+
+const collectWords = (window as any).collectWords
 
 describe('collectWords', () => {
   function makeBoard() {
