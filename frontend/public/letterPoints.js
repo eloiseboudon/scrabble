@@ -1,5 +1,5 @@
 // Make LETTER_POINTS available globally
-export const LETTER_POINTS = {
+const LETTER_POINTS = {
   "A": 1,
   "B": 3,
   "C": 3,

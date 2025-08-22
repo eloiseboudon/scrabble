@@ -11,14 +11,15 @@
 <body>
   <div id="app"></div>
   <!-- Load Vue and main app as a module -->
+  <script src="/api.js"></script>
+  <script src="/letterPoints.js"></script>
+  <script src="/authHeartbeat.js"></script>
+  <script src="/validateWords.js"></script>
+  <script src="/botThinking.js"></script>
+  <script src="/invalidWords.js"></script>
+
+  <!-- Load Vue and main app as a module -->
   <script type="module">
-    import './api.js'
-    import './letterPoints.js'
-    import './authHeartbeat.js'
-    import './validateWords.js'
-    import './botThinking.js'
-    import './invalidWords.js'
-    // Import Vue
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
 

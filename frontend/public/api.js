@@ -22,5 +22,4 @@ console.log('[api] API_BASE:', API_BASE);
 // Make it available globally
 window.API_BASE = API_BASE;
 
-// Export as ES6 module
-export { API_BASE };
+
