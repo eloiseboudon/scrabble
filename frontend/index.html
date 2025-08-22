@@ -144,11 +144,12 @@
 
         // Fonction utilitaire pour créer des requêtes avec timeout et retry
         async function fetchWithRetry(url, options = {}, maxRetries = 3, timeout = 10000) {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), timeout);
-
           let lastError;
+
           for (let i = 0; i < maxRetries; i++) {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
             try {
               const response = await fetch(url, {
                 ...options,
@@ -158,6 +159,7 @@
               clearTimeout(timeoutId);
               return response;
             } catch (error) {
+              clearTimeout(timeoutId);
               lastError = error;
               console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
 
@@ -169,7 +171,6 @@
             }
           }
 
-          clearTimeout(timeoutId);
           throw lastError;
         }
 
@@ -243,11 +244,12 @@
             console.log('API_BASE:', window.API_BASE);
             console.log('Current location:', window.location.href);
 
+            // Essayer d'abord avec un timeout plus court pour diagnostiquer
             const res = await fetchWithRetry(`${API_BASE}/auth/me`, {
               headers: {
                 'Content-Type': 'application/json'
               }
-            }, 2, 8000);
+            }, 2, 15000); // 15 secondes de timeout, 2 tentatives
 
             console.log('Auth response status:', res.status);
 
@@ -282,12 +284,14 @@
 
             // Analyser le type d'erreur pour un message approprié
             if (err.name === 'AbortError') {
-              authError.value = 'Délai de connexion dépassé. Vérifiez votre connexion internet.';
+              authError.value = 'La connexion prend trop de temps. Vérifiez votre connexion internet et réessayez.';
             } else if (err.message === 'Not authenticated') {
               // Erreur attendue, pas besoin d'afficher un message d'erreur
               authError.value = null;
             } else if (err.message.includes('NetworkError') || err.message === 'Failed to fetch') {
-              authError.value = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet ou réessayez plus tard.';
+              authError.value = 'Impossible de se connecter au serveur. Vérifiez que le serveur est accessible et que votre connexion internet fonctionne.';
+            } else if (err.message.includes('CORS')) {
+              authError.value = 'Erreur de configuration CORS. Contactez l\'administrateur.';
             } else {
               authError.value = `Erreur de connexion: ${err.message}`;
             }
