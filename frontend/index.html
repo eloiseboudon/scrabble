@@ -40,6 +40,7 @@
         }
       }
     })
+
     const options = {
       moduleCache: {
         vue: Vue
@@ -79,11 +80,15 @@
         const userId = ref(localStorage.getItem('userId'))
         const ongoingGames = ref([])
         const finishedGames = ref([])
+        const authError = ref(null)
+        const isLoading = ref(true)
 
         // Check authentication status on app load
-        onMounted(() => {
-          checkAuth();
+        onMounted(async () => {
+          await checkAuth();
+          isLoading.value = false;
         });
+
         const rack = ref([])
         const placements = ref([])
         const wordValid = ref(false)
@@ -137,6 +142,37 @@
         window.appConfirm = confirmApp
         window.appPrompt = promptApp
 
+        // Fonction utilitaire pour créer des requêtes avec timeout et retry
+        async function fetchWithRetry(url, options = {}, maxRetries = 3, timeout = 10000) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+          let lastError;
+          for (let i = 0; i < maxRetries; i++) {
+            try {
+              const response = await fetch(url, {
+                ...options,
+                signal: controller.signal,
+                credentials: 'include'
+              });
+              clearTimeout(timeoutId);
+              return response;
+            } catch (error) {
+              lastError = error;
+              console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
+
+              // Si c'est la dernière tentative, on lance l'erreur
+              if (i === maxRetries - 1) break;
+
+              // Attendre avant de retry (backoff exponentiel)
+              await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+            }
+          }
+
+          clearTimeout(timeoutId);
+          throw lastError;
+        }
+
         async function validateWord() {
           if (!gameRef.value) {
             wordValid.value = false;
@@ -156,11 +192,21 @@
 
           try {
             const results = await Promise.all(
-              words.map(w =>
-                fetch(`${API_BASE}/validate?word=${encodeURIComponent(w)}`)
-                  .then(r => r.json())
-                  .then(d => d.valid)
-              )
+              words.map(async w => {
+                try {
+                  const response = await fetchWithRetry(
+                    `${API_BASE}/validate?word=${encodeURIComponent(w)}`,
+                    {},
+                    2,
+                    5000
+                  );
+                  const data = await response.json();
+                  return data.valid;
+                } catch (error) {
+                  console.error(`Failed to validate word ${w}:`, error);
+                  return false;
+                }
+              })
             )
             wordValid.value = results.every(Boolean)
           } catch {
@@ -172,43 +218,80 @@
 
         async function loadGames() {
           if (!userId.value) return
-          const res = await fetch(`${API_BASE}/games?user_id=${userId.value}`)
-          const data = await res.json()
-          ongoingGames.value = data.ongoing
-          finishedGames.value = data.finished
+
+          try {
+            const res = await fetchWithRetry(`${API_BASE}/games?user_id=${userId.value}`)
+            if (!res.ok) {
+              throw new Error(`HTTP ${res.status}: ${res.statusText}`)
+            }
+            const data = await res.json()
+            ongoingGames.value = data.ongoing || []
+            finishedGames.value = data.finished || []
+          } catch (error) {
+            console.error('Failed to load games:', error)
+            ongoingGames.value = []
+            finishedGames.value = []
+            // Ne pas afficher d'erreur à l'utilisateur pour le chargement des parties
+          }
         }
 
         async function checkAuth() {
+          authError.value = null;
+
           try {
-            const res = await fetch(`${API_BASE}/auth/me`, {
-              credentials: 'include',
+            console.log('Checking authentication...');
+            console.log('API_BASE:', window.API_BASE);
+            console.log('Current location:', window.location.href);
+
+            const res = await fetchWithRetry(`${API_BASE}/auth/me`, {
               headers: {
                 'Content-Type': 'application/json'
               }
-            });
+            }, 2, 8000);
+
+            console.log('Auth response status:', res.status);
 
             if (!res.ok) {
               if (res.status === 401) {
-                // Expected when not logged in
                 console.debug('User not authenticated, showing login screen');
+                throw new Error('Not authenticated');
               } else {
                 console.error('Authentication check failed with status:', res.status);
+                throw new Error(`HTTP ${res.status}: ${res.statusText}`);
               }
-              throw new Error('Not authenticated');
             }
 
             const data = await res.json();
+            console.log('Auth successful, user data:', { user_id: data.user_id, username: data.username });
+
             userId.value = data.user_id;
+            userName.value = data.username || data.display_name || 'Player';
             localStorage.setItem('userId', data.user_id);
             document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1');
             userAvatar.value = data.avatar_url;
-            startAuthHeartbeat();
+
+            // Démarrer le heartbeat uniquement si l'auth a réussi
+            if (typeof window.startAuthHeartbeat === 'function') {
+              window.startAuthHeartbeat();
+            }
+
             await loadGames();
             return true;
           } catch (err) {
-            if (err.message !== 'Not authenticated') {
-              console.error('Unexpected error during authentication check:', err);
+            console.error('Authentication check error:', err);
+
+            // Analyser le type d'erreur pour un message approprié
+            if (err.name === 'AbortError') {
+              authError.value = 'Délai de connexion dépassé. Vérifiez votre connexion internet.';
+            } else if (err.message === 'Not authenticated') {
+              // Erreur attendue, pas besoin d'afficher un message d'erreur
+              authError.value = null;
+            } else if (err.message.includes('NetworkError') || err.message === 'Failed to fetch') {
+              authError.value = 'Impossible de se connecter au serveur. Vérifiez votre connexion internet ou réessayez plus tard.';
+            } else {
+              authError.value = `Erreur de connexion: ${err.message}`;
             }
+
             userId.value = null;
             localStorage.removeItem('userId');
             return false;
@@ -224,139 +307,204 @@
 
         async function logout() {
           try {
-            await fetch(`${API_BASE}/auth/logout`, {
-              method: 'POST',
-              credentials: 'include'
-            })
+            await fetchWithRetry(`${API_BASE}/auth/logout`, {
+              method: 'POST'
+            }, 1, 5000);
           } catch (err) {
-            // ignore
+            console.warn('Logout request failed:', err);
+            // On continue même si la requête de logout échoue
           }
-          stopAuthHeartbeat()
+
+          if (typeof window.stopAuthHeartbeat === 'function') {
+            window.stopAuthHeartbeat();
+          }
+
           localStorage.removeItem('userId')
           userId.value = null
           ongoingGames.value = []
           finishedGames.value = []
+          authError.value = null
           view.value = 'home'
         }
 
+        async function retryAuth() {
+          isLoading.value = true;
+          await checkAuth();
+          isLoading.value = false;
+        }
+
         async function newGameBot() {
-          const resGame = await fetch(`${API_BASE}/games`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ vs_computer: true })
-          })
-          const { game_id } = await resGame.json()
-          const joinRes = await fetch(`${API_BASE}/games/${game_id}/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: Number(userId.value) })
-          })
-          const { player_id } = await joinRes.json()
-          await fetch(`${API_BASE}/games/${game_id}/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_computer: true })
-          })
-          const startRes = await fetch(`${API_BASE}/games/${game_id}/start`, {
-            method: 'POST'
-          })
-          const startData = await startRes.json()
-          const info = startData.players.find(p => p.player_id === player_id)
-          rack.value = info.rack
-          placements.value = []
-          result.value = ''
-          score.value = 0
-          score_adversaire.value = 0
-          opponentAvatar.value = '/img/icone/avatars/robot.svg'
-          userName.value = userName.value
-          opponentName.value = 'Bot'
-          const game = { id: game_id, player_id, vsBot: true }
-          ongoingGames.value.push(game)
-          currentGame.value = game
-          view.value = 'game'
+          try {
+            const resGame = await fetchWithRetry(`${API_BASE}/games`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ vs_computer: true })
+            })
+            if (!resGame.ok) {
+              throw new Error(`Failed to create game: ${resGame.status}`);
+            }
+            const { game_id } = await resGame.json()
+
+            const joinRes = await fetchWithRetry(`${API_BASE}/games/${game_id}/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: Number(userId.value) })
+            })
+            if (!joinRes.ok) {
+              throw new Error(`Failed to join game: ${joinRes.status}`);
+            }
+            const { player_id } = await joinRes.json()
+
+            await fetchWithRetry(`${API_BASE}/games/${game_id}/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ is_computer: true })
+            })
+
+            const startRes = await fetchWithRetry(`${API_BASE}/games/${game_id}/start`, {
+              method: 'POST'
+            })
+            if (!startRes.ok) {
+              throw new Error(`Failed to start game: ${startRes.status}`);
+            }
+            const startData = await startRes.json()
+
+            const info = startData.players.find(p => p.player_id === player_id)
+            rack.value = info.rack
+            placements.value = []
+            result.value = ''
+            score.value = 0
+            score_adversaire.value = 0
+            opponentAvatar.value = '/img/icone/avatars/robot.svg'
+            opponentName.value = 'Bot'
+            const game = { id: game_id, player_id, vsBot: true }
+            ongoingGames.value.push(game)
+            currentGame.value = game
+            view.value = 'game'
+          } catch (error) {
+            console.error('Failed to create bot game:', error);
+            await alertApp(`Erreur lors de la création de la partie: ${error.message}`);
+          }
         }
 
         async function newGameFriend(pseudo) {
-          const resUser = await fetch(`${API_BASE}/users/by-username?username=${encodeURIComponent(pseudo)}`)
-          if (!resUser.ok) {
-            await alertApp('Utilisateur introuvable')
-            return
+          try {
+            const resUser = await fetchWithRetry(`${API_BASE}/users/by-username?username=${encodeURIComponent(pseudo)}`)
+            if (!resUser.ok) {
+              if (resUser.status === 404) {
+                await alertApp('Utilisateur introuvable')
+              } else {
+                await alertApp(`Erreur lors de la recherche de l'utilisateur: ${resUser.status}`)
+              }
+              return
+            }
+            const { user_id: friendId } = await resUser.json()
+            const resAvatar = await fetchWithRetry(`${API_BASE}/users/${friendId}`)
+            if (resAvatar.ok) {
+              const friendData = await resAvatar.json()
+              opponentAvatar.value = friendData.avatar_url
+            }
+            const resGame = await fetchWithRetry(`${API_BASE}/games`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({})
+            })
+            if (!resGame.ok) {
+              throw new Error(`Failed to create game: ${resGame.status}`);
+            }
+            const { game_id } = await resGame.json()
+            const join1 = await fetchWithRetry(`${API_BASE}/games/${game_id}/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: Number(userId.value) })
+            })
+            if (!join1.ok) {
+              throw new Error(`Failed to join game: ${join1.status}`);
+            }
+            const { player_id } = await join1.json()
+            await fetchWithRetry(`${API_BASE}/games/${game_id}/join`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: friendId })
+            })
+            const startRes = await fetchWithRetry(`${API_BASE}/games/${game_id}/start`, {
+              method: 'POST'
+            })
+            if (!startRes.ok) {
+              throw new Error(`Failed to start game: ${startRes.status}`);
+            }
+            const startData = await startRes.json()
+            const info = startData.players.find(p => p.player_id === player_id)
+            rack.value = info.rack
+            placements.value = []
+            result.value = ''
+            score.value = 0
+            score_adversaire.value = 0
+            const game = { id: game_id, player_id, vsBot: false }
+            ongoingGames.value.push(game)
+            currentGame.value = game
+            view.value = 'game'
+          } catch (error) {
+            console.error('Failed to create friend game:', error);
+            await alertApp(`Erreur lors de la création de la partie: ${error.message}`);
           }
-          const { user_id: friendId } = await resUser.json()
-          const resAvatar = await fetch(`${API_BASE}/users/${friendId}`)
-          const friendData = await resAvatar.json()
-          opponentAvatar.value = friendData.avatar_url
-          const resGame = await fetch(`${API_BASE}/games`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-          })
-          const { game_id } = await resGame.json()
-          const join1 = await fetch(`${API_BASE}/games/${game_id}/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: Number(userId.value) })
-          })
-          const { player_id } = await join1.json()
-          await fetch(`${API_BASE}/games/${game_id}/join`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user_id: friendId })
-          })
-          const startRes = await fetch(`${API_BASE}/games/${game_id}/start`, {
-            method: 'POST'
-          })
-          const startData = await startRes.json()
-          const info = startData.players.find(p => p.player_id === player_id)
-          rack.value = info.rack
-          placements.value = []
-          result.value = ''
-          score.value = 0
-          score_adversaire.value = 0
-          const game = { id: game_id, player_id, vsBot: false }
-          ongoingGames.value.push(game)
-          currentGame.value = game
-          view.value = 'game'
         }
 
         async function resumeGame(game) {
-          currentGame.value = game
-          view.value = 'game'
-          await Vue.nextTick()
-          const res = await fetch(`${API_BASE}/games/${game.id}?player_id=${game.player_id}`)
-          const data = await res.json()
+          try {
+            currentGame.value = game
+            view.value = 'game'
+            await Vue.nextTick()
+            const res = await fetchWithRetry(`${API_BASE}/games/${game.id}?player_id=${game.player_id}`)
+            if (!res.ok) {
+              throw new Error(`Failed to load game: ${res.status}`);
+            }
+            const data = await res.json()
 
-          rack.value = data.rack
-          placements.value = []
-          result.value = ''
-          score.value = data.scores[game.player_id] || 0
-          const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
-          score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
-          userName.value = data.players.find(p => p.player_id === game.player_id).display_name
-          opponentName.value = data.players.find(p => p.player_id !== game.player_id).display_name
-          const opp = data.players?.find(p => p.player_id !== game.player_id)
-          if (opp) {
-            opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            rack.value = data.rack
+            placements.value = []
+            result.value = ''
+            score.value = data.scores[game.player_id] || 0
+            const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
+            score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+            userName.value = data.players.find(p => p.player_id === game.player_id)?.display_name || 'Player'
+            opponentName.value = data.players.find(p => p.player_id !== game.player_id)?.display_name || 'Opponent'
+            const opp = data.players?.find(p => p.player_id !== game.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
+
+            view.value = 'game'
+            await Vue.nextTick() // assure que <Game> et <Grid> sont montés
+
+            // API propre exposée par Game.vue
+            if (data.tiles && gameRef.value) {
+              data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
+            }
+          } catch (error) {
+            console.error('Failed to resume game:', error);
+            await alertApp(`Erreur lors de la reprise de la partie: ${error.message}`);
+            view.value = 'home';
           }
-
-          view.value = 'game'
-          await Vue.nextTick() // assure que <Game> et <Grid> sont montés
-
-          // ✅ API propre exposée par Game.vue
-          data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
         }
 
         async function finishGame() {
           if (currentGame.value) {
-            await fetch(`${API_BASE}/finish`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ game_id: currentGame.value.id })
-            })
-            const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
-            if (idx !== -1) ongoingGames.value.splice(idx, 1)
-            finishedGames.value.push(currentGame.value)
-            currentGame.value = null
+            try {
+              await fetchWithRetry(`${API_BASE}/finish`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ game_id: currentGame.value.id })
+              })
+              const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
+              if (idx !== -1) ongoingGames.value.splice(idx, 1)
+              finishedGames.value.push(currentGame.value)
+              currentGame.value = null
+            } catch (error) {
+              console.error('Failed to finish game:', error);
+              // On continue même si la requête échoue
+              currentGame.value = null
+            }
           }
           view.value = 'home'
         }
@@ -440,53 +588,64 @@
         async function play() {
           if (placements.value.length === 0) return
           const execute = async () => {
-            const res = await fetch(
-              `${API_BASE}/games/${currentGame.value.id}/play`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  player_id: currentGame.value.player_id,
-                  placements: placements.value
+            try {
+              const res = await fetchWithRetry(
+                `${API_BASE}/games/${currentGame.value.id}/play`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    player_id: currentGame.value.player_id,
+                    placements: placements.value
+                  })
+                }
+              )
+              if (!res.ok) {
+                const err = await res.json()
+                if (window.showInvalidWords) {
+                  const words = await window.showInvalidWords(alertApp, err.detail, currentWord.value)
+                  if (!words.length) {
+                    await alertApp(err.detail || 'Coup invalide')
+                  }
+                } else {
+                  await alertApp(err.detail || 'Coup invalide')
+                }
+                result.value = err.detail || 'Coup invalide'
+                return
+              }
+              const data = await res.json()
+              if (data.words && data.words.length) {
+                await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
+              }
+              result.value = `Score : ${data.score}`
+              gameRef.value.lockTiles(placements.value)
+              placements.value = []
+              if (data.bot_move) {
+                data.bot_move.forEach(([row, col, letter, blank]) => {
+                  gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
                 })
               }
-            )
-            if (!res.ok) {
-              const err = await res.json()
-              const words = await showInvalidWords(alertApp, err.detail, currentWord.value)
-              if (!words.length) {
-                await alertApp(err.detail || 'Coup invalide')
+              const stateRes = await fetchWithRetry(
+                `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+              )
+              if (stateRes.ok) {
+                const stateData = await stateRes.json()
+                rack.value = stateData.rack
+                score.value = stateData.scores[currentGame.value.player_id] || 0
+                const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+                score_adversaire.value = advId ? stateData.scores[advId] : 0
+                const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+                if (opp) {
+                  opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+                }
               }
-              result.value = err.detail || 'Coup invalide'
-              return
-            }
-            const data = await res.json()
-            if (data.words && data.words.length) {
-              await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
-            }
-            result.value = `Score : ${data.score}`
-            gameRef.value.lockTiles(placements.value)
-            placements.value = []
-            if (data.bot_move) {
-              data.bot_move.forEach(([row, col, letter, blank]) => {
-                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-              })
-            }
-            const stateRes = await fetch(
-              `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
-            )
-            const stateData = await stateRes.json()
-            rack.value = stateData.rack
-            score.value = stateData.scores[currentGame.value.player_id] || 0
-            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-            score_adversaire.value = advId ? stateData.scores[advId] : 0
-            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
-            if (opp) {
-              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            } catch (error) {
+              console.error('Failed to play move:', error);
+              await alertApp(`Erreur lors du coup: ${error.message}`);
             }
           }
-          if (currentGame.value?.vsBot) {
-            await runBotThinking(popup, execute)
+          if (currentGame.value?.vsBot && window.runBotThinking) {
+            await window.runBotThinking(popup, execute)
           } else {
             await execute()
           }
@@ -495,47 +654,52 @@
         async function passTurn() {
           clearMove()
           const execute = async () => {
-            const res = await fetch(
-              `${API_BASE}/games/${currentGame.value.id}/pass`,
-              {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ player_id: currentGame.value.player_id })
+            try {
+              const res = await fetchWithRetry(
+                `${API_BASE}/games/${currentGame.value.id}/pass`,
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ player_id: currentGame.value.player_id })
+                }
+              )
+              if (!res.ok) {
+                const err = await res.json()
+                result.value = err.detail || 'Action impossible'
+                return
               }
-            )
-            if (!res.ok) {
-              const err = await res.json()
-              result.value = err.detail || 'Action impossible'
-              return
-            }
-            const data = await res.json()
-            result.value = 'Tour passé'
-            if (data.bot_move) {
-              data.bot_move.forEach(([row, col, letter, blank]) => {
-                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-              })
-            }
-            const stateRes = await fetch(
-              `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
-            )
-            const stateData = await stateRes.json()
-            rack.value = stateData.rack
-            score.value = stateData.scores[currentGame.value.player_id] || 0
-            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-            score_adversaire.value = advId ? stateData.scores[advId] : 0
-            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
-            if (opp) {
-              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+              const data = await res.json()
+              result.value = 'Tour passé'
+              if (data.bot_move) {
+                data.bot_move.forEach(([row, col, letter, blank]) => {
+                  gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+                })
+              }
+              const stateRes = await fetchWithRetry(
+                `${API_BASE}/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`
+              )
+              if (stateRes.ok) {
+                const stateData = await stateRes.json()
+                rack.value = stateData.rack
+                score.value = stateData.scores[currentGame.value.player_id] || 0
+                const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+                score_adversaire.value = advId ? stateData.scores[advId] : 0
+                const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+                if (opp) {
+                  opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+                }
+              }
+            } catch (error) {
+              console.error('Failed to pass turn:', error);
+              await alertApp(`Erreur lors du passage de tour: ${error.message}`);
             }
           }
-          if (currentGame.value?.vsBot) {
-            await runBotThinking(popup, execute)
+          if (currentGame.value?.vsBot && window.runBotThinking) {
+            await window.runBotThinking(popup, execute)
           } else {
             await execute()
           }
         }
-
-        checkAuth()
 
         return {
           view,
@@ -569,11 +733,28 @@
           wordValid,
           popup,
           onPopupConfirm,
-          onPopupCancel
+          onPopupCancel,
+          authError,
+          isLoading,
+          retryAuth
         }
       },
       template: `
-        <Login v-if="!userId" @auth="onAuth" />
+        <div v-if="isLoading" class="loading-screen">
+          <div class="loading-spinner"></div>
+          <p>Connexion en cours...</p>
+        </div>
+        
+        <div v-else-if="authError" class="error-screen">
+          <div class="error-message">
+            <h3>Problème de connexion</h3>
+            <p>{{ authError }}</p>
+            <button @click="retryAuth" class="retry-btn">Réessayer</button>
+            <button @click="authError = null" class="offline-btn">Continuer hors ligne</button>
+          </div>
+        </div>
+        
+        <Login v-else-if="!userId" @auth="onAuth" />
         <Home v-else-if="view==='home'"
               :ongoing-games="ongoingGames"
               :finished-games="finishedGames"
@@ -581,35 +762,113 @@
               @new-game-bot="newGameBot"
               @resume="resumeGame"
               @navigate="view=$event" />
-          <Game v-else-if="view==='game'"
-                ref="gameRef"
-                :rack="rack"
-                :result="result"
-                :score="score"
-                :score_adversaire="score_adversaire"
-                :player-avatar="userAvatar"
-                :opponent-avatar="opponentAvatar"
-                :letter-points="LETTER_POINTS"
-                :word-valid="wordValid"
-                @home="goHome"
-                @finish="finishGame"
-                @placed="placed"
-                @removed="removed"
-                @moved="moved"
-                @rack-drop="onRackDrop"
-                @drag-start="onDragStart"
-                @play="play"
-                @clear="clearMove"
-                @shuffle="shuffleRack"
-                @pass="passTurn" />
-          <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
-          <Settings v-else-if="view==='settings'" @back="view='home'" />
-          <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
-        `
+        <Game v-else-if="view==='game'"
+              ref="gameRef"
+              :rack="rack"
+              :result="result"
+              :score="score"
+              :score_adversaire="score_adversaire"
+              :player-avatar="userAvatar"
+              :opponent-avatar="opponentAvatar"
+              :letter-points="LETTER_POINTS"
+              :word-valid="wordValid"
+              @home="goHome"
+              @finish="finishGame"
+              @placed="placed"
+              @removed="removed"
+              @moved="moved"
+              @rack-drop="onRackDrop"
+              @drag-start="onDragStart"
+              @play="play"
+              @clear="clearMove"
+              @shuffle="shuffleRack"
+              @pass="passTurn" />
+        <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
+        <Settings v-else-if="view==='settings'" @back="view='home'" />
+        <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
+      `
     }
 
     Vue.createApp(App).mount('#app')
   </script>
+
+  <style>
+    .loading-screen,
+    .error-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 2rem;
+      text-align: center;
+    }
+
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      border: 4px solid #f3f3f3;
+      border-top: 4px solid #3498db;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 1rem;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .error-message {
+      background: #fff;
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .error-message h3 {
+      color: #e74c3c;
+      margin-bottom: 1rem;
+    }
+
+    .error-message p {
+      color: #666;
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+
+    .retry-btn,
+    .offline-btn {
+      background: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin: 0 0.5rem;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+
+    .retry-btn:hover {
+      background: #2980b9;
+    }
+
+    .offline-btn {
+      background: #95a5a6;
+    }
+
+    .offline-btn:hover {
+      background: #7f8c8d;
+    }
+  </style>
 </body>
 
 </html>
