@@ -11,6 +11,14 @@
     console.log('[api] hostname:', hostname);
     console.log('[api] API_BASE:', API_BASE);
 
+    // Dans api.js, ajoutez ces logs de diagnostic
+    console.log('Environment:', {
+        location: window.location.href,
+        protocol: window.location.protocol,
+        host: window.location.host,
+        API_BASE: window.API_BASE
+    });
+
     // Make it available globally
     window.API_BASE = API_BASE;
 
