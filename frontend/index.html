@@ -177,6 +177,12 @@
             });
 
             if (!res.ok) {
+              if (res.status === 401) {
+                // Expected when not logged in
+                console.debug('User not authenticated, showing login screen');
+              } else {
+                console.error('Authentication check failed with status:', res.status);
+              }
               throw new Error('Not authenticated');
             }
 
@@ -189,7 +195,9 @@
             await loadGames();
             return true;
           } catch (err) {
-            console.log('Authentication check failed:', err);
+            if (err.message !== 'Not authenticated') {
+              console.error('Unexpected error during authentication check:', err);
+            }
             userId.value = null;
             localStorage.removeItem('userId');
             return false;
