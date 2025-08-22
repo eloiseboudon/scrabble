@@ -10,16 +10,14 @@
 
 <body>
   <div id="app"></div>
-
-  <script src="api.js"></script>
-  <script src="letterPoints.js"></script>
-  <script src="authHeartbeat.js"></script>
-  <script src="validateWords.js"></script>
-  <script src="botThinking.js"></script>
-  <script src="invalidWords.js"></script>
-
   <!-- Load Vue and main app as a module -->
   <script type="module">
+    import './api.js'
+    import './letterPoints.js'
+    import './authHeartbeat.js'
+    import './validateWords.js'
+    import './botThinking.js'
+    import './invalidWords.js'
     // Import Vue
     import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
     import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
@@ -146,8 +144,8 @@
           let lastError;
 
           for (let i = 0; i < maxRetries; i++) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), timeout);
+            const controller = new AbortController(); const timeoutId = setTimeout(() =>
+              controller.abort(), timeout);
 
             try {
               const response = await fetch(url, {
@@ -527,9 +525,11 @@
             const tile = rack.value.splice(from, 1)[0]
             const insert = from < idx ? idx - 1 : idx
             rack.value.splice(insert, 0, tile)
-          } else if (data.source === 'board') {
+          }
+          else if (data.source === 'board') {
             const letter = gameRef.value.gridRef.value.takeBack(data.row, data.col)
-            if (!letter) return
+            if (!letter)
+              return
             const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
             if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
             rack.value.splice(idx, 0, letter === letter.toLowerCase() ? '?' : letter)
@@ -743,53 +743,32 @@
         }
       },
       template: `
-        <div v-if="isLoading" class="loading-screen">
-          <div class="loading-spinner"></div>
-          <p>Connexion en cours...</p>
-        </div>
-        
-        <div v-else-if="authError" class="error-screen">
-          <div class="error-message">
-            <h3>Problème de connexion</h3>
-            <p>{{ authError }}</p>
-            <button @click="retryAuth" class="retry-btn">Réessayer</button>
-            <button @click="authError = null" class="offline-btn">Continuer hors ligne</button>
+          <div v-if="isLoading" class="loading-screen">
+            <div class="loading-spinner"></div>
+            <p>Connexion en cours...</p>
           </div>
-        </div>
-        
-        <Login v-else-if="!userId" @auth="onAuth" />
-        <Home v-else-if="view==='home'"
-              :ongoing-games="ongoingGames"
-              :finished-games="finishedGames"
-              @new-game-friend="newGameFriend"
-              @new-game-bot="newGameBot"
-              @resume="resumeGame"
-              @navigate="view=$event" />
-        <Game v-else-if="view==='game'"
-              ref="gameRef"
-              :rack="rack"
-              :result="result"
-              :score="score"
-              :score_adversaire="score_adversaire"
-              :player-avatar="userAvatar"
-              :opponent-avatar="opponentAvatar"
-              :letter-points="LETTER_POINTS"
-              :word-valid="wordValid"
-              @home="goHome"
-              @finish="finishGame"
-              @placed="placed"
-              @removed="removed"
-              @moved="moved"
-              @rack-drop="onRackDrop"
-              @drag-start="onDragStart"
-              @play="play"
-              @clear="clearMove"
-              @shuffle="shuffleRack"
-              @pass="passTurn" />
-        <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
-        <Settings v-else-if="view==='settings'" @back="view='home'" />
-        <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
-      `
+
+          <div v-else-if="authError" class="error-screen">
+            <div class="error-message">
+              <h3>Problème de connexion</h3>
+              <p>{{ authError }}</p>
+              <button @click="retryAuth" class="retry-btn">Réessayer</button>
+              <button @click="authError = null" class="offline-btn">Continuer hors ligne</button>
+            </div>
+          </div>
+
+          <Login v-else-if="!userId" @auth="onAuth" />
+          <Home v-else-if="view==='home'" :ongoing-games="ongoingGames" :finished-games="finishedGames"
+            @new-game-friend="newGameFriend" @new-game-bot="newGameBot" @resume="resumeGame" @navigate="view=$event" />
+          <Game v-else-if="view==='game'" ref="gameRef" :rack="rack" :result="result" :score="score"
+            :score_adversaire="score_adversaire" :player-avatar="userAvatar" :opponent-avatar="opponentAvatar"
+            :letter-points="LETTER_POINTS" :word-valid="wordValid" @home="goHome" @finish="finishGame" @placed="placed"
+            @removed="removed" @moved="moved" @rack-drop="onRackDrop" @drag-start="onDragStart" @play="play"
+            @clear="clearMove" @shuffle="shuffleRack" @pass="passTurn" />
+          <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
+          <Settings v-else-if="view==='settings'" @back="view='home'" />
+          <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
+          `
     }
 
     Vue.createApp(App).mount('#app')

@@ -1,5 +1,5 @@
 // Make LETTER_POINTS available globally
-window.LETTER_POINTS = {
+export const LETTER_POINTS = {
   "A": 1,
   "B": 3,
   "C": 3,
@@ -28,3 +28,5 @@ window.LETTER_POINTS = {
   "Z": 10,
   "?": 0
 };
+
+window.LETTER_POINTS = LETTER_POINTS;
