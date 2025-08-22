@@ -1,14 +1,20 @@
+import os
 import sys
 from logging.config import fileConfig
-from pathlib import Path
 
-sys.path.append(str(Path(__file__).resolve().parents[1]))
+# Ajouter les répertoires au PYTHONPATH
+current_dir = os.path.dirname(os.path.abspath(__file__))
+root_dir = os.path.dirname(current_dir)
+backend_dir = os.path.join(root_dir, 'backend')
+sys.path.insert(0, root_dir)
+sys.path.insert(0, backend_dir)
 
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
-from backend.database import Base
-import backend.models  # noqa: F401  # ensure models are registered
+
+# Importer tous les modèles depuis le backend
+from backend.models.base import Base
 
 config = context.config
 if config.config_file_name is not None:
