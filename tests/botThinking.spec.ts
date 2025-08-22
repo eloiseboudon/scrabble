@@ -1,7 +1,9 @@
 import { ref } from 'vue'
 import Popup from '@/components/Popup.vue'
 import { mount } from '@vue/test-utils'
-import { runBotThinking } from '@/botThinking.js'
+import '@/public/botThinking.js'
+
+const runBotThinking = (window as any).runBotThinking
 
 describe('Bot thinking popup', () => {
   it('renders loading popup without actions', () => {

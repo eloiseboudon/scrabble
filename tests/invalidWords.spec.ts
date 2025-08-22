@@ -1,4 +1,6 @@
-import { showInvalidWords } from '@/invalidWords.js'
+import '@/public/invalidWords.js'
+
+const showInvalidWords = (window as any).showInvalidWords
 import { vi } from 'vitest'
 
 describe('showInvalidWords', () => {
