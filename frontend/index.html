@@ -26,10 +26,7 @@
     // Make Vue available globally for non-module scripts
     window.Vue = Vue;
 
-    // Log API_BASE to verify it's available
-    console.log('API_BASE:', window.API_BASE);
     const API_BASE = window.API_BASE ?? '';
-    console.log('API_BASE (module) =', API_BASE);
 
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
@@ -240,11 +237,6 @@
           authError.value = null;
 
           try {
-            console.log('Checking authentication...');
-            console.log('API_BASE:', window.API_BASE);
-            console.log('Current location:', window.location.href);
-
-            // Essayer d'abord avec un timeout plus court pour diagnostiquer
             const res = await fetchWithRetry(`${API_BASE}/auth/me`, {
               headers: {
                 'Content-Type': 'application/json'

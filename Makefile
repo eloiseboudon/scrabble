@@ -15,7 +15,9 @@ backend: install
 	$(VENV)/bin/uvicorn backend.main:app --reload
 
 frontend:
-	python3 -m http.server 5173 --directory frontend
+	npm i
+	npm run dev
+#python3 -m http.server 5173 --directory frontend
 
 db:
 	psql -U eloise -d scrabble

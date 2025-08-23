@@ -11,6 +11,12 @@ export default defineConfig({
         }
     },
     server: {
-        port: 5173
-    }
+        port: 5173,
+        proxy: {
+            '^/(api|auth|games|uploads)$': { target: 'http://localhost:8001', changeOrigin: true },
+            '^/(validate|finish|health|docs|redoc|openapi\\.json)$': { target: 'http://localhost:8001', changeOrigin: true },
+            '^/games/.*': { target: 'http://localhost:8001', changeOrigin: true },
+            '^/auth/.*': { target: 'http://localhost:8001', changeOrigin: true },
+        },
+    },
 })

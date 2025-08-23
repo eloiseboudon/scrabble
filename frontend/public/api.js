@@ -15,14 +15,9 @@ if (isProduction) {
     }
 }
 
-console.log('[api] Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
-console.log('[api] hostname:', hostname);
-console.log('[api] API_BASE:', API_BASE);
-
 // Make it available globally
 window.API_BASE = '';
 
-console.log('[api] API_BASE =', window.API_BASE);
 
 
 
