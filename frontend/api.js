@@ -14,7 +14,7 @@ if (isProduction) {
   }
 }
 
-async function apiGet(endpoint, options = {}) {
+export async function apiGet(endpoint, options = {}) {
   return fetch(`${API_BASE}/${endpoint}`, {
     method: 'GET',
     credentials: 'include',
@@ -22,7 +22,7 @@ async function apiGet(endpoint, options = {}) {
   })
 }
 
-async function apiPost(endpoint, data, options = {}) {
+export async function apiPost(endpoint, data, options = {}) {
   const opts = {
     method: 'POST',
     credentials: 'include',
@@ -37,6 +37,10 @@ async function apiPost(endpoint, data, options = {}) {
   return fetch(`${API_BASE}/${endpoint}`, opts)
 }
 
-window.API_BASE = API_BASE
-window.apiGet = apiGet
-window.apiPost = apiPost
+export { API_BASE }
+
+if (typeof window !== 'undefined') {
+  window.API_BASE = API_BASE
+  window.apiGet = apiGet
+  window.apiPost = apiPost
+}

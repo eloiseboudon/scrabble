@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { API_BASE, apiPost } from '../api.js'
 
 const emit = defineEmits(['auth'])
 
@@ -92,21 +93,11 @@ async function submit() {
   error.value = ''
   const endpoint = isRegister.value ? 'auth/register' : 'auth/login'
 
-  // if (!window.API_BASE) {
-  //   error.value = 'Configuration error: API base URL not found'
-  //   return
-  // }
-
   try {
-    const res = await fetch(`${window.API_BASE}/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        username: username.value,
-        password: password.value,
-        remember_me: rememberMe.value
-      })
+    const res = await apiPost(endpoint, {
+      username: username.value,
+      password: password.value,
+      remember_me: rememberMe.value
     })
 
     if (!res.ok) {
@@ -128,11 +119,7 @@ function toggle() {
 }
 
 function loginGoogle() {
-  // if (!window.API_BASE) {
-  //   error.value = 'Configuration error: API base URL not found'
-  //   return
-  // }
-  window.location.href = `${window.API_BASE}/auth/google/authorize`
+  window.location.href = `${API_BASE}/auth/google/authorize`
 }
 </script>
 

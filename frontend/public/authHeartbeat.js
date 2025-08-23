@@ -4,12 +4,8 @@ function startAuthHeartbeat() {
   stopAuthHeartbeat()
   timer = setInterval(async () => {
     try {
-      const url = `${API_BASE}/auth/refresh`
-      console.log('[authHeartbeat] refreshing', url)
-      await fetch(url, {
-        method: 'POST',
-        credentials: 'include'
-      })
+      console.log('[authHeartbeat] refreshing')
+      await apiPost('auth/refresh')
     } catch (err) {
       console.error('[authHeartbeat] refresh failed', err)
     }

@@ -86,7 +86,7 @@
 </template>
 
 <script setup>
-import { API_BASE } from '../api.js'
+import { apiGet, apiPost } from '../api.js'
 import { onMounted, ref } from 'vue'
 
 const emit = defineEmits(['back', 'logout'])
@@ -106,12 +106,12 @@ const defaultAvatars = Array.from(
 
 onMounted(async () => {
   try {
-    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    const res = await apiGet('auth/me')
     if (res.ok) {
       user.value = await res.json()
       selected.value = user.value.color_palette || 'palette1'
       document.documentElement.setAttribute('data-theme', selected.value)
-      const res2 = await fetch(`${API_BASE}/games/user/${user.value.user_id}`, { credentials: 'include' })
+      const res2 = await apiGet(`games/user/${user.value.user_id}`)
       Object.assign(user.value, await res2.json())
     }
   } catch (err) {
@@ -130,11 +130,7 @@ async function onFileChange(e) {
   const form = new FormData()
   form.append('file', file)
   try {
-    const res = await fetch(`${API_BASE}/auth/me/avatar`, {
-      method: 'POST',
-      credentials: 'include',
-      body: form
-    })
+    const res = await apiPost('auth/me/avatar', form)
     if (res.ok) {
       const data = await res.json()
       if (user.value) user.value.avatar_url = data.avatar_url
@@ -148,11 +144,7 @@ async function selectAvatar(url) {
   const form = new FormData()
   form.append('choice', url.split('/').pop())
   try {
-    const res = await fetch(`${API_BASE}/auth/me/avatar`, {
-      method: 'POST',
-      credentials: 'include',
-      body: form
-    })
+    const res = await apiPost('auth/me/avatar', form)
     if (res.ok) {
       const data = await res.json()
       if (user.value) user.value.avatar_url = data.avatar_url
@@ -165,12 +157,7 @@ async function selectAvatar(url) {
 async function updatePalette() {
   document.documentElement.setAttribute('data-theme', selected.value)
   try {
-    await fetch(`${API_BASE}/auth/me/palette`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ palette: selected.value })
-    })
+    await apiPost('auth/me/palette', { palette: selected.value })
     if (user.value) user.value.color_palette = selected.value
   } catch (err) {
     console.error('Erreur mise à jour palette:', err)
@@ -183,10 +170,7 @@ async function deleteAccount() {
     return
   }
   try {
-    await fetch(`${API_BASE}/me/deletion-request`, {
-      method: 'POST',
-      credentials: 'include',
-    })
+    await apiPost('me/deletion-request')
     emit('logout')
     await window.appAlert('Demande de suppression enregistrée')
   } catch (err) {

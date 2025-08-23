@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { API_BASE } from '../api.js'
+import { apiGet, apiPost } from '../api.js'
 import { ref, onMounted } from 'vue'
 
 const emit = defineEmits(['back'])
@@ -21,7 +21,7 @@ const selected = ref('palette1')
 
 onMounted(async () => {
   try {
-    const res = await fetch(`${API_BASE}/auth/me`, { credentials: 'include' })
+    const res = await apiGet('auth/me')
     if (res.ok) {
       const data = await res.json()
       selected.value = data.color_palette || 'palette1'
@@ -35,12 +35,7 @@ onMounted(async () => {
 async function updatePalette() {
   document.documentElement.setAttribute('data-theme', selected.value)
   try {
-    await fetch(`${API_BASE}/auth/me/palette`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ palette: selected.value })
-    })
+    await apiPost('auth/me/palette', { palette: selected.value })
   } catch (err) {
     console.error('Erreur mise à jour palette:', err)
   }

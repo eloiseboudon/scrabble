@@ -31,7 +31,7 @@
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
         try {
-          await fetch(`${API_BASE}/auth/refresh`, { method: 'POST', credentials: 'include' })
+          await window.apiPost('auth/refresh')
         } catch {
           // ignore
         }
@@ -144,15 +144,29 @@
           let lastError;
 
           for (let i = 0; i < maxRetries; i++) {
-            const controller = new AbortController(); const timeoutId = setTimeout(() =>
-              controller.abort(), timeout);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            const { method = 'GET', body, ...rest } = options;
+            const opts = { ...rest, signal: controller.signal };
 
             try {
-              const response = await fetch(url, {
-                ...options,
-                signal: controller.signal,
-                credentials: 'include'
-              });
+              let response;
+              if (API_BASE && url.startsWith(API_BASE) && (method === 'GET' || method === 'POST')) {
+                const endpoint = url.slice(API_BASE.length + 1);
+                if (method === 'POST') {
+                  response = await window.apiPost(endpoint, body, opts);
+                } else {
+                  response = await window.apiGet(endpoint, opts);
+                }
+              } else {
+                response = await fetch(url, {
+                  method,
+                  body,
+                  ...opts,
+                  credentials: 'include'
+                });
+              }
               clearTimeout(timeoutId);
               return response;
             } catch (error) {
@@ -160,10 +174,8 @@
               lastError = error;
               console.warn(`Attempt ${i + 1} failed for ${url}:`, error.message);
 
-              // Si c'est la dernière tentative, on lance l'erreur
               if (i === maxRetries - 1) break;
 
-              // Attendre avant de retry (backoff exponentiel)
               await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
             }
           }
