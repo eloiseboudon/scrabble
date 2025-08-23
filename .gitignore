@@ -15,7 +15,6 @@ dist/
 test.db
 
 tips.md
-deploy-scrabble.sh
 
 alembic.ini
 backend/alembic/versions
