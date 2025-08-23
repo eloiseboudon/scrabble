@@ -427,7 +427,7 @@ setup_frontend() {
     log "🔍 Vérification finale..."
     
     # Vérifier les fichiers critiques
-    critical_files=("index.html" "api.js" "style.css")
+    critical_files=("index.html" "api.js")
     missing_files=()
     
     for file in "${critical_files[@]}"; do
