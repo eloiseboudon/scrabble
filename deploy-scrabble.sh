@@ -47,6 +47,11 @@ info() {
     echo -e "${BLUE}[$(date '+%Y-%m-%d %H:%M:%S')] INFO: $1${NC}"
 }
 
+log_error() {
+    echo -e "${RED}[$(date '+%Y-%m-%d %H:%M:%S')] ERROR: ❌ $1${NC}" >&2
+}
+
+
 # Vérification des prérequis
 check_prerequisites() {
     log "🔍 Vérification des prérequis..."
