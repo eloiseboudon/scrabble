@@ -629,52 +629,47 @@ setup_nginx() {
     
     sudo tee /etc/nginx/sites-available/scrabble > /dev/null << EOF
 server {
-    listen $NGINX_PORT;
+    listen 8080;
     server_name app-scrabble.tulip-saas.fr scrabble.tulip-saas.fr;
 
-    # Frontend (fichiers statiques)
+    # --- Frontend (statique) ---
     location / {
         root /home/ubuntu/scrabble/frontend/dist;
-        try_files \$uri \$uri/ /index.html;
+        try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
-        
-        # CORS headers pour le frontend
         add_header Access-Control-Allow-Origin "*";
         add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE";
         add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
     }
 
-    # API Backend (proxy vers le port $BACKEND_PORT)
-    location /api/ {
-        proxy_pass http://localhost:$BACKEND_PORT/;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        # CORS pour l'API
-        add_header Access-Control-Allow-Origin "*";
-        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE";
-        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
+    # --- API / prefix ---
+    location ^~ /api/ {
+        proxy_pass http://localhost:8001/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Routes spécifiques du backend
-    location ~ ^/(docs|redoc|openapi.json|health|auth|games|deletion|uploads) {
-        proxy_pass http://localhost:$BACKEND_PORT;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        
-        # CORS pour les routes backend
-        add_header Access-Control-Allow-Origin "*";
-        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE";
-        add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
-    }
+    # --- Autres routes backend précises ---
+    location ^~ /auth/ { proxy_pass http://localhost:8001; include proxy_params; }
+    location = /health { proxy_pass http://localhost:8001; include proxy_params; }
+    location = /openapi.json { proxy_pass http://localhost:8001; include proxy_params; }
+    location = /docs { proxy_pass http://localhost:8001; include proxy_params; }
+    location = /redoc { proxy_pass http://localhost:8001; include proxy_params; }
+    location ^~ /games { proxy_pass http://localhost:8001; include proxy_params; }
+    location ^~ /deletion { proxy_pass http://localhost:8001; include proxy_params; }
+    location ^~ /uploads { proxy_pass http://localhost:8001; include proxy_params; }
 
-    # Logs d'accès et d'erreur
+    # (facultatif) petit include pour éviter la répétition
+    # /etc/nginx/proxy_params :
+    # proxy_set_header Host $host;
+    # proxy_set_header X-Real-IP $remote_addr;
+    # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    # proxy_set_header X-Forwarded-Proto $scheme;
+
     access_log /var/log/nginx/scrabble_access.log;
-    error_log /var/log/nginx/scrabble_error.log;
+    error_log  /var/log/nginx/scrabble_error.log;
 }
 EOF
     
