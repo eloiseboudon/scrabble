@@ -632,9 +632,10 @@ server {
     listen 8080;
     server_name app-scrabble.tulip-saas.fr scrabble.tulip-saas.fr;
 
-    # --- Frontend (statique) ---
+    # ---- FRONT (statique) ----
     location / {
         root /home/ubuntu/scrabble/frontend/dist;
+        index index.html;
         try_files $uri $uri/ /index.html;
         add_header Cache-Control "no-cache, no-store, must-revalidate";
         add_header Access-Control-Allow-Origin "*";
@@ -642,31 +643,80 @@ server {
         add_header Access-Control-Allow-Headers "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization";
     }
 
-    # --- API / prefix ---
+    # ---- API prefix ----
     location ^~ /api/ {
         proxy_pass http://localhost:8001/;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # (pas de add_header CORS ici, c’est FastAPI qui gère)
     }
 
-    # --- Autres routes backend précises ---
-    location ^~ /auth/ { proxy_pass http://localhost:8001; include proxy_params; }
-    location = /health { proxy_pass http://localhost:8001; include proxy_params; }
-    location = /openapi.json { proxy_pass http://localhost:8001; include proxy_params; }
-    location = /docs { proxy_pass http://localhost:8001; include proxy_params; }
-    location = /redoc { proxy_pass http://localhost:8001; include proxy_params; }
-    location ^~ /games { proxy_pass http://localhost:8001; include proxy_params; }
-    location ^~ /deletion { proxy_pass http://localhost:8001; include proxy_params; }
-    location ^~ /uploads { proxy_pass http://localhost:8001; include proxy_params; }
+    # ---- Routes backend précises ----
+    location ^~ /auth/ {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
-    # (facultatif) petit include pour éviter la répétition
-    # /etc/nginx/proxy_params :
-    # proxy_set_header Host $host;
-    # proxy_set_header X-Real-IP $remote_addr;
-    # proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    # proxy_set_header X-Forwarded-Proto $scheme;
+    location = /health {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /openapi.json {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /docs {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location = /redoc {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /games {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /deletion {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location ^~ /uploads {
+        proxy_pass http://localhost:8001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
 
     access_log /var/log/nginx/scrabble_access.log;
     error_log  /var/log/nginx/scrabble_error.log;
