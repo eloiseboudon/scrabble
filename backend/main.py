@@ -18,16 +18,24 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev_change_me")
 app = FastAPI()
 
 # Configure CORS
+# ALLOWED_ORIGINS = [
+#     "http://localhost:5173",
+#     "http://127.0.0.1:5173",
+#     "http://localhost:8000",
+#     "http://127.0.0.1:8000",
+#     FRONTEND_URL,
+#     "http://app-scrabble.tulip-saas.fr:8001",
+#     "http://app-scrabble.tulip-saas.fr:8081",
+#     "http://app-scrabble.tulip-saas.fr:8080",
+# ]
+
 ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://localhost:8000",
-    "http://127.0.0.1:8000",
-    FRONTEND_URL,
-    "http://app-scrabble.tulip-saas.fr:8001",
-    "http://app-scrabble.tulip-saas.fr:8081",
     "http://app-scrabble.tulip-saas.fr:8080",
+    # (ajouter plus tard "https://app-scrabble.tulip-saas.fr" quand tu mettras le HTTPS)
 ]
+
 
 app.add_middleware(
     CORSMiddleware,
