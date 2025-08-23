@@ -86,8 +86,8 @@
 </template>
 
 <script setup>
-import { API_BASE } from '../api.js'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue';
+import { API_BASE } from '../api.js';
 
 const emit = defineEmits(['back', 'logout'])
 const user = ref(null)

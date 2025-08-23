@@ -12,8 +12,8 @@
 </template>
 
 <script setup>
-import { API_BASE } from '../api.js'
-import { ref, onMounted } from 'vue'
+import { onMounted, ref } from 'vue';
+import { API_BASE } from '../api.js';
 
 const emit = defineEmits(['back'])
 const palettes = ['palette1', 'palette2', 'palette3', 'palette4', 'palette5']
