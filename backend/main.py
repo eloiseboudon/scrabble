@@ -26,6 +26,7 @@ ALLOWED_ORIGINS = [
     FRONTEND_URL,
     "http://app-scrabble.tulip-saas.fr:8001",
     "http://app-scrabble.tulip-saas.fr:8081",
+    "http://app-scrabble.tulip-saas.fr:8080",
 ]
 
 app.add_middleware(
