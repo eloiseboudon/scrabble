@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw'
-import { API_BASE } from '../../frontend/public/api.js'
+import { API_BASE } from '../../frontend/api.js'
 
 export const handlers = [
   http.post('/games', () => HttpResponse.json({ game_id: 'g1' })),
