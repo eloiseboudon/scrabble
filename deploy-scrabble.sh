@@ -213,7 +213,7 @@ setup_backend() {
         
         # Mettre à jour l'URL de base de données si nécessaire
         if grep -q "DATABASE_URL=.*eloise@localhost" "$backend_dir/.env"; then
-            sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME|g" "$backend_dir/.env"
+            sed -i "s|DATABASE_URL=.*|DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5433/$DB_NAME|g" "$backend_dir/.env"
             info "🔧 URL de base de données mise à jour"
         fi
         
@@ -234,9 +234,9 @@ setup_backend() {
         warn "⚠️ Fichier .env introuvable, création d'un .env de base"
         cat > "$backend_dir/.env" << EOF
 # Base de données
-DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
+DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5433/$DB_NAME
 DB_HOST=localhost
-DB_PORT=5432
+DB_PORT=5433
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
 DB_PASSWORD=$DB_PASSWORD
@@ -980,7 +980,7 @@ show_deployment_info() {
     echo "🔧 Backend:  $BACKEND_URL"
     echo "📖 API Docs: $BACKEND_URL/docs"
     echo "💓 Health:   $BACKEND_URL/health"
-    echo "🗄️ Database: PostgreSQL sur le port 5432"
+    echo "🗄️ Database: PostgreSQL sur le port 5433"
     echo "📊 Service:  sudo systemctl status scrabble-backend"
     echo "📝 Logs:     tail -f /home/ubuntu/scrabble/logs/backend.log"
     echo "🔧 Nginx:    sudo nginx -t && sudo systemctl reload nginx"
