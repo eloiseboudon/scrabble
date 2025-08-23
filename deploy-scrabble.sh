@@ -992,8 +992,8 @@ main() {
     setup_backend
     run_database_migrations
     setup_frontend
-    log "🔄 Vérification forcée de la mise à jour frontend..."
-    /home/ubuntu/scrabble/update_frontend.sh
+    # log "🔄 Vérification forcée de la mise à jour frontend..."
+    # /home/ubuntu/scrabble/update_frontend.sh
     setup_nginx
     create_start_script
     setup_backend_service
