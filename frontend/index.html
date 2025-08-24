@@ -28,7 +28,7 @@
 
     document.addEventListener('visibilitychange', async () => {
       if (document.visibilityState === 'visible') {
-        try { await apiPost('/auth/refresh') } catch {}
+        try { await apiPost('/auth/refresh') } catch { }
       }
     })
 
@@ -192,6 +192,7 @@
 
         async function checkAuth() {
           authError.value = null;
+          isLoading.value = true;
 
           try {
             const data = await apiGet('/auth/me');
@@ -209,13 +210,37 @@
             }
 
             await loadGames();
+
+            // Si authentifié avec succès, afficher la page principale
+            view.value = 'home';
             return true;
           } catch (err) {
             console.error('Authentication check error:', err);
-            const missingToken = err.status === 401 && err.body?.detail === 'Missing token';
-            authError.value = missingToken ? null : `Erreur de connexion: ${err.message}`;
+
+            // Si erreur 401 (pas de token ou token invalide), afficher la page de login
+            if (err.status === 401) {
+              console.log('User not authenticated, showing login page');
+              userId.value = null;
+              localStorage.removeItem('userId');
+
+              // Arrêter le heartbeat si il était démarré
+              if (typeof window.stopAuthHeartbeat === 'function') {
+                window.stopAuthHeartbeat();
+              }
+
+              // Afficher la page de login
+              view.value = 'login';
+              authError.value = null; // Pas d'erreur à afficher, c'est normal
+              isLoading.value = false;
+              return false;
+            }
+
+            // Pour les autres erreurs (réseau, serveur, etc.)
+            authError.value = 'Erreur de connexion au serveur';
             userId.value = null;
             localStorage.removeItem('userId');
+            view.value = 'login';
+            isLoading.value = false;
             return false;
           }
         }
@@ -558,34 +583,144 @@
           retryAuth
         }
       },
+
+      // Template de l'App dans index.html
+      // Template de l'App dans index.html - section à remplacer
       template: `
-          <div v-if="isLoading" class="loading-screen">
-            <div class="loading-spinner"></div>
-            <p>Connexion en cours...</p>
-          </div>
+  <div class="app">
+    <!-- Écran de chargement initial -->
+    <div v-if="isLoading" class="loading-screen">
+      <div class="loading-content">
+        <div class="logo-icon">S</div>
+        <h1 class="logo-text">Scrabble</h1>
+        <div class="loading-spinner"></div>
+        <p>Chargement...</p>
+      </div>
+    </div>
 
-          <div v-else-if="authError" class="error-screen">
-            <div class="error-message">
-              <h3>Problème de connexion</h3>
-              <p>{{ authError }}</p>
-              <button @click="retryAuth" class="retry-btn">Réessayer</button>
-              <button @click="authError = null" class="offline-btn">Continuer hors ligne</button>
-            </div>
-          </div>
+    <!-- Page de connexion -->
+    <Login 
+      v-else-if="view === 'login'" 
+      @auth="onAuth" 
+    />
 
-          <Login v-else-if="!userId" @auth="onAuth" />
-          <Home v-else-if="view==='home'" :ongoing-games="ongoingGames" :finished-games="finishedGames"
-            @new-game-friend="newGameFriend" @new-game-bot="newGameBot" @resume="resumeGame" @navigate="view=$event" />
-          <Game v-else-if="view==='game'" ref="gameRef" :rack="rack" :result="result" :score="score"
-            :score_adversaire="score_adversaire" :player-avatar="userAvatar" :opponent-avatar="opponentAvatar"
-            :letter-points="LETTER_POINTS" :word-valid="wordValid" @home="goHome" @finish="finishGame" @placed="placed"
-            @removed="removed" @moved="moved" @rack-drop="onRackDrop" @drag-start="onDragStart" @play="play"
-            @clear="clearMove" @shuffle="shuffleRack" @pass="passTurn" />
-          <Profile v-else-if="view==='profile'" @back="view='home'" @logout="logout" />
-          <Settings v-else-if="view==='settings'" @back="view='home'" />
-          <Popup v-if="popup" :popup="popup" @confirm="onPopupConfirm" @cancel="onPopupCancel" />
-          `
+    <!-- Application principale (quand authentifié) -->
+    <div v-else class="main-app">
+      <Home 
+        v-if="view === 'home'" 
+        :ongoing-games="ongoingGames"
+        :finished-games="finishedGames"
+        @new-game="onNewGame"
+        @join-game="onJoinGame" 
+        @profile="onProfile"
+        @settings="onSettings"
+      />
+      
+      <Game 
+        v-else-if="view === 'game'"
+        :game="currentGame"
+        @back="onBack"
+        ref="gameRef"
+      />
+      
+      <Settings 
+        v-else-if="view === 'settings'"
+        @back="onBack"
+      />
+      
+      <Profile 
+        v-else-if="view === 'profile'"
+        @back="onBack"
+      />
+    </div>
+
+    <!-- Popup global -->
+    <Popup 
+      v-if="popup" 
+      :popup="popup" 
+      @confirm="onPopupConfirm" 
+      @cancel="onPopupCancel" 
+    />
+  </div>
+`,
+
+      // Fonction onAuth à ajouter/corriger
+      function onAuth(newUserId) {
+        userId.value = newUserId;
+    localStorage.setItem('userId', newUserId);
+
+    // Démarrer le heartbeat
+    if (typeof window.startAuthHeartbeat === 'function') {
+      window.startAuthHeartbeat();
     }
+
+    // Recharger les données utilisateur et les parties
+    checkAuth();
+}
+
+    // CSS à ajouter pour l'écran de chargement
+    const loadingCSS = `
+<style>
+.loading-screen {
+  min-height: 100vh;
+  background: var(--color-background);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-lg);
+}
+
+.loading-content {
+  text-align: center;
+  color: var(--color-text-primary);
+}
+
+.loading-content .logo-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--color-title-gradient);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-weight: 800;
+  font-size: 2.5rem;
+  box-shadow: 0 8px 20px rgba(57, 141, 245, 0.3);
+  margin: 0 auto var(--spacing-lg) auto;
+}
+
+.loading-content .logo-text {
+  background: var(--color-title-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 var(--spacing-xl) 0;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(57, 141, 245, 0.1);
+  border-top: 4px solid var(--color-title);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto var(--spacing-lg) auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-content p {
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+</style>
+`;
 
     Vue.createApp(App).mount('#app')
   </script>
