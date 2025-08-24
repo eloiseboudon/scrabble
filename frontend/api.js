@@ -1,6 +1,11 @@
 // frontend/api.js
-// Source de vérité : Vite -> VITE_API_BASE. Fallback '' (same-origin via Nginx/proxy).
-export const API_BASE = (import.meta?.env?.VITE_API_BASE ?? '').toString();
+// Source de vérité : VITE_API_BASE injecté côté serveur (globalThis ou process.env).
+// Fallback '' (same-origin via Nginx/proxy).
+export const API_BASE = (
+    globalThis?.API_BASE ??
+    (typeof process !== 'undefined' ? process.env.VITE_API_BASE : undefined) ??
+    ''
+).toString();
 
 // Helpers standards
 export async function apiGet(path) {
