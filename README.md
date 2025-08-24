@@ -17,8 +17,8 @@ This project provides a minimal Scrabble setup:
    ```bash
    make backend
    ```
-3. Health check: `http://localhost:8000/health`
-4. Validate a word: `http://localhost:8000/validate?word=PYTHON`
+3. Health check: `http://localhost:5173/health`
+4. Validate a word: `http://localhost:5173/validate?word=PYTHON`
 
 ### Frontend
 Serve the static files and open the Scrabble interface:
