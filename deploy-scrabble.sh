@@ -455,7 +455,7 @@ setup_frontend() {
         head -3 frontend/dist/api.js
         echo ""
         echo "API_BASE configuré pour:"
-        grep -o "app-scrabble.tulip-saas.fr:8001\|localhost:5173" frontend/dist/api.js | head -1 || echo "Configuration par défaut"
+        grep -o "app-scrabble.tulip-saas.fr:8000\|localhost:5173" frontend/dist/api.js | head -1 || echo "Configuration par défaut"
     fi
     
     local build_size=$(du -sh frontend/dist 2>/dev/null | cut -f1 || echo "N/A")
@@ -761,7 +761,7 @@ source backend/venv/bin/activate
 export PYTHONPATH="/home/ubuntu/scrabble:$PYTHONPATH"
 
 # Utiliser python -m pour éviter les problèmes d'imports relatifs
-python -m uvicorn backend.main:app --host 0.0.0.0 --port 8001
+python -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
 EOF
     
     chmod +x "$APP_DIR/start_backend.sh"

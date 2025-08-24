@@ -12,7 +12,7 @@ $(VENV): backend/requirements.txt
 	$(PIP) install -r backend/requirements.txt
 
 backend: install
-	$(VENV)/bin/uvicorn backend.main:app --reload
+	$(VENV)/bin/uvicorn backend.main:app --port 8000 --reload
 
 frontend:
 	npm i
