@@ -10,7 +10,7 @@ REPO_URL="https://github.com/eloiseboudon/scrabble.git"
 APP_DIR="/home/ubuntu/scrabble"
 BRANCH="${1:-main}"
 BACKUP_DIR="/home/ubuntu/backups_scrabble/deployments/$(date +%Y%m%d_%H%M%S)"
-BACKEND_PORT="8001"
+BACKEND_PORT="8080"
 NGINX_PORT="8080"
 
 # Base de données
@@ -455,7 +455,7 @@ setup_frontend() {
         head -3 frontend/dist/api.js
         echo ""
         echo "API_BASE configuré pour:"
-        grep -o "app-scrabble.tulip-saas.fr:8001\|localhost:8000" frontend/dist/api.js | head -1 || echo "Configuration par défaut"
+        grep -o "app-scrabble.tulip-saas.fr:8001\|localhost:5173" frontend/dist/api.js | head -1 || echo "Configuration par défaut"
     fi
     
     local build_size=$(du -sh frontend/dist 2>/dev/null | cut -f1 || echo "N/A")
@@ -478,7 +478,7 @@ create_essential_js_files() {
     console.log('[api] Détection hostname:', hostname);
     
     const isProduction = hostname === 'app-scrabble.tulip-saas.fr';
-    const port = isProduction ? 8001 : 8000;
+    const port = isProduction ? 8080 : 5173;
     const API_BASE = `${protocol}//${hostname}:${port}`;
     
     console.log('[api] Environment:', isProduction ? 'PRODUCTION' : 'DEVELOPMENT');
@@ -505,19 +505,15 @@ EOF
 
     # authHeartbeat.js
     cat > frontend/dist/authHeartbeat.js << 'EOF'
+import { apiPost } from './api.js'
+
 let timer
 
 function startAuthHeartbeat() {
   stopAuthHeartbeat()
   timer = setInterval(async () => {
     try {
-      if (!window.API_BASE) {
-        console.error('[authHeartbeat] API_BASE non défini')
-        return
-      }
-      const url = `${window.API_BASE}/auth/refresh`
-      console.log('[authHeartbeat] refreshing', url)
-      await fetch(url, { method: 'POST', credentials: 'include' })
+      await apiPost('/auth/refresh')
     } catch (err) {
       console.error('[authHeartbeat] refresh failed', err)
     }

@@ -79,6 +79,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { apiPost } from '../api.js'
 
 const emit = defineEmits(['auth'])
 
@@ -90,35 +91,16 @@ const rememberMe = ref(false)
 
 async function submit() {
   error.value = ''
-  const endpoint = isRegister.value ? 'auth/register' : 'auth/login'
-
-  // if (!window.API_BASE) {
-  //   error.value = 'Configuration error: API base URL not found'
-  //   return
-  // }
-
+  const endpoint = isRegister.value ? '/auth/register' : '/auth/login'
   try {
-    const res = await fetch(`${window.API_BASE}/${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        username: username.value,
-        password: password.value,
-        remember_me: rememberMe.value
-      })
+    const data = await apiPost(endpoint, {
+      username: username.value,
+      password: password.value,
+      remember_me: rememberMe.value
     })
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}))
-      error.value = data.detail || 'Erreur de connexion'
-      return
-    }
-
-    const data = await res.json()
     emit('auth', data.user_id)
   } catch (err) {
-    error.value = 'Erreur de connexion. Vérifiez votre connexion internet.'
+    error.value = err.body?.detail || 'Erreur de connexion. Vérifiez votre connexion internet.'
   }
 }
 
@@ -128,11 +110,7 @@ function toggle() {
 }
 
 function loginGoogle() {
-  // if (!window.API_BASE) {
-  //   error.value = 'Configuration error: API base URL not found'
-  //   return
-  // }
-  window.location.href = `${window.API_BASE}/auth/google/authorize`
+  window.location.href = '/auth/google/authorize'
 }
 </script>
 
