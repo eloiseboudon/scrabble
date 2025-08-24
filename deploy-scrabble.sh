@@ -505,19 +505,15 @@ EOF
 
     # authHeartbeat.js
     cat > frontend/dist/authHeartbeat.js << 'EOF'
+import { apiPost } from './api.js'
+
 let timer
 
 function startAuthHeartbeat() {
   stopAuthHeartbeat()
   timer = setInterval(async () => {
     try {
-      if (!window.API_BASE) {
-        console.error('[authHeartbeat] API_BASE non défini')
-        return
-      }
-      const url = `${window.API_BASE}/auth/refresh`
-      console.log('[authHeartbeat] refreshing', url)
-      await fetch(url, { method: 'POST', credentials: 'include' })
+      await apiPost('/auth/refresh')
     } catch (err) {
       console.error('[authHeartbeat] refresh failed', err)
     }

@@ -9,7 +9,8 @@ export const API_BASE = (
 
 // Helpers standards
 export async function apiGet(path) {
-    const url = (path.startsWith('/') ? path : `/${path}`);
+    const base = API_BASE.replace(/\/+$/, '');
+    const url = `${base}${path.startsWith('/') ? path : `/${path}`}`;
     const res = await fetch(url, { credentials: 'include' });
     if (!res.ok) {
         let body = null; try { body = await res.json(); } catch { }
@@ -19,7 +20,8 @@ export async function apiGet(path) {
 }
 
 export async function apiPost(path, data) {
-    const url = (path.startsWith('/') ? path : `/${path}`);
+    const base = API_BASE.replace(/\/+$/, '');
+    const url = `${base}${path.startsWith('/') ? path : `/${path}`}`;
     const init = {
         method: 'POST',
         credentials: 'include',
