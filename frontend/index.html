@@ -1,592 +1,584 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fr">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scrabble</title>
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="/src/style.css" />
 </head>
 
 <body>
   <div id="app"></div>
-  <!-- Load Vue and main app as a module -->
-  <script src="/letterPoints.js"></script>
-  <script type="module" src="/authHeartbeat.js"></script>
-  <script src="/validateWords.js"></script>
-  <script src="/botThinking.js"></script>
-  <script src="/invalidWords.js"></script>
+  <script type="module" src="/src/main.js"></script>
+</body>
 
-  <!-- Load Vue and main app as a module -->
-  <script type="module">
-    import * as Vue from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
-    import { loadModule } from 'https://unpkg.com/vue3-sfc-loader/dist/vue3-sfc-loader.esm.js'
-    import { apiGet, apiPost } from './api.js'
+</html>
+<script>
+  // Make Vue available globally for non-module scripts
+  window.Vue = Vue;
 
-    // Make Vue available globally for non-module scripts
-    window.Vue = Vue;
+  document.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'visible') {
+      try { await apiPost('/auth/refresh') } catch { }
+    }
+  })
 
-    document.addEventListener('visibilitychange', async () => {
-      if (document.visibilityState === 'visible') {
-        try { await apiPost('/auth/refresh') } catch { }
+  const options = {
+    moduleCache: {
+      vue: Vue
+    },
+    async getFile(url) {
+      const res = await fetch(url);
+      if (!res.ok)
+        throw Object.assign(new Error(res.statusText + ' ' + url), { res });
+      return {
+        getContentData: asBinary => asBinary ? res.arrayBuffer() : res.text(),
       }
-    })
+    },
+    addStyle(textContent) {
+      const style = Object.assign(document.createElement('style'), { textContent });
+      const ref = document.head.getElementsByTagName('style')[0] || null;
+      document.head.insertBefore(style, ref);
+    },
+    globals: {}
+  }
 
-    const options = {
-      moduleCache: {
-        vue: Vue
-      },
-      async getFile(url) {
-        const res = await fetch(url);
-        if (!res.ok)
-          throw Object.assign(new Error(res.statusText + ' ' + url), { res });
-        return {
-          getContentData: asBinary => asBinary ? res.arrayBuffer() : res.text(),
+  async function loadComponent(path) {
+    const mod = await loadModule(path, options)
+    return mod.default || mod
+  }
+
+  const Grid = await loadComponent('./components/Grid.vue')
+  const Home = await loadComponent('./components/Home.vue')
+  const Game = await loadComponent('./components/Game.vue')
+  const Settings = await loadComponent('./components/Settings.vue')
+  const Profile = await loadComponent('./components/Profile.vue')
+  const Login = await loadComponent('./components/Login.vue')
+  const Popup = await loadComponent('./components/Popup.vue')
+
+  const App = {
+    components: { Grid, Home, Game, Settings, Profile, Login, Popup },
+    setup() {
+      const { ref, onMounted } = Vue;
+
+      const view = ref('home')
+      const userId = ref(localStorage.getItem('userId'))
+      const ongoingGames = ref([])
+      const finishedGames = ref([])
+      const authError = ref(null)
+      const isLoading = ref(true)
+
+      // Check authentication status on app load
+      onMounted(async () => {
+        await checkAuth();
+        isLoading.value = false;
+      });
+
+      const rack = ref([])
+      const placements = ref([])
+      const wordValid = ref(false)
+      const result = ref('')
+      const currentWord = ref('')
+      const userName = ref('')
+      const opponentName = ref('')
+      const score = ref(0)
+      const score_adversaire = ref(0)
+      const userAvatar = ref('')
+      const opponentAvatar = ref('')
+      const gameRef = ref(null)
+      const currentGame = ref(null)
+      const popup = ref(null)
+
+      function alertApp(message) {
+        return new Promise(resolve => {
+          popup.value = { type: 'alert', message, resolve }
+        })
+      }
+
+      function confirmApp(message) {
+        return new Promise(resolve => {
+          popup.value = { type: 'confirm', message, resolve }
+        })
+      }
+
+      function promptApp(message) {
+        return new Promise(resolve => {
+          popup.value = { type: 'prompt', message, value: '', resolve }
+        })
+      }
+
+      function onPopupConfirm(value) {
+        if (popup.value) {
+          const { resolve, type } = popup.value
+          resolve(type === 'prompt' ? value : true)
+          popup.value = null
         }
-      },
-      addStyle(textContent) {
-        const style = Object.assign(document.createElement('style'), { textContent });
-        const ref = document.head.getElementsByTagName('style')[0] || null;
-        document.head.insertBefore(style, ref);
-      },
-      globals: {}
-    }
+      }
 
-    async function loadComponent(path) {
-      const mod = await loadModule(path, options)
-      return mod.default || mod
-    }
-
-    const Grid = await loadComponent('./components/Grid.vue')
-    const Home = await loadComponent('./components/Home.vue')
-    const Game = await loadComponent('./components/Game.vue')
-    const Settings = await loadComponent('./components/Settings.vue')
-    const Profile = await loadComponent('./components/Profile.vue')
-    const Login = await loadComponent('./components/Login.vue')
-    const Popup = await loadComponent('./components/Popup.vue')
-
-    const App = {
-      components: { Grid, Home, Game, Settings, Profile, Login, Popup },
-      setup() {
-        const { ref, onMounted } = Vue;
-
-        const view = ref('home')
-        const userId = ref(localStorage.getItem('userId'))
-        const ongoingGames = ref([])
-        const finishedGames = ref([])
-        const authError = ref(null)
-        const isLoading = ref(true)
-
-        // Check authentication status on app load
-        onMounted(async () => {
-          await checkAuth();
-          isLoading.value = false;
-        });
-
-        const rack = ref([])
-        const placements = ref([])
-        const wordValid = ref(false)
-        const result = ref('')
-        const currentWord = ref('')
-        const userName = ref('')
-        const opponentName = ref('')
-        const score = ref(0)
-        const score_adversaire = ref(0)
-        const userAvatar = ref('')
-        const opponentAvatar = ref('')
-        const gameRef = ref(null)
-        const currentGame = ref(null)
-        const popup = ref(null)
-
-        function alertApp(message) {
-          return new Promise(resolve => {
-            popup.value = { type: 'alert', message, resolve }
-          })
+      function onPopupCancel() {
+        if (popup.value) {
+          const { resolve, type } = popup.value
+          resolve(type === 'prompt' ? null : false)
+          popup.value = null
         }
+      }
 
-        function confirmApp(message) {
-          return new Promise(resolve => {
-            popup.value = { type: 'confirm', message, resolve }
-          })
+      window.appAlert = alertApp
+      window.appConfirm = confirmApp
+      window.appPrompt = promptApp
+
+      // Les utilitaires apiGet et apiPost gèrent les appels API standard
+
+      async function validateWord() {
+        if (!gameRef.value) {
+          wordValid.value = false;
+          currentWord.value = '';
+          return;
         }
-
-        function promptApp(message) {
-          return new Promise(resolve => {
-            popup.value = { type: 'prompt', message, value: '', resolve }
-          })
-        }
-
-        function onPopupConfirm(value) {
-          if (popup.value) {
-            const { resolve, type } = popup.value
-            resolve(type === 'prompt' ? value : true)
-            popup.value = null
-          }
-        }
-
-        function onPopupCancel() {
-          if (popup.value) {
-            const { resolve, type } = popup.value
-            resolve(type === 'prompt' ? null : false)
-            popup.value = null
-          }
-        }
-
-        window.appAlert = alertApp
-        window.appConfirm = confirmApp
-        window.appPrompt = promptApp
-
-        // Les utilitaires apiGet et apiPost gèrent les appels API standard
-
-        async function validateWord() {
-          if (!gameRef.value) {
-            wordValid.value = false;
-            currentWord.value = '';
-            return;
-          }
-          console.log('collectWords available:', typeof window.collectWords);
-          const words = window.collectWords(gameRef.value.getTile, placements.value)
-          console.log('collectWords result:', words);
-          if (words.length === 0) {
-            wordValid.value = false
-            currentWord.value = ''
-            return
-          }
-
-          currentWord.value = words[0]
-
-          try {
-            const results = await Promise.all(
-              words.map(async w => {
-                try {
-                  const data = await apiGet(`/validate?word=${encodeURIComponent(w)}`);
-                  return data.valid;
-                } catch (error) {
-                  console.error(`Failed to validate word ${w}:`, error);
-                  return false;
-                }
-              })
-            )
-            wordValid.value = results.every(Boolean)
-          } catch {
-            wordValid.value = false
-          }
+        console.log('collectWords available:', typeof window.collectWords);
+        const words = window.collectWords(gameRef.value.getTile, placements.value)
+        console.log('collectWords result:', words);
+        if (words.length === 0) {
+          wordValid.value = false
+          currentWord.value = ''
+          return
         }
 
-        Vue.watch(placements, validateWord, { deep: true })
+        currentWord.value = words[0]
 
-        async function loadGames() {
-          if (!userId.value) return
-
-          try {
-            const data = await apiGet(`/games?user_id=${userId.value}`)
-            ongoingGames.value = data.ongoing || []
-            finishedGames.value = data.finished || []
-          } catch (error) {
-            console.error('Failed to load games:', error)
-            ongoingGames.value = []
-            finishedGames.value = []
-            // Ne pas afficher d'erreur à l'utilisateur pour le chargement des parties
-          }
-        }
-
-        async function checkAuth() {
-          authError.value = null;
-          isLoading.value = true;
-
-          try {
-            const data = await apiGet('/auth/me');
-            console.log('Auth successful, user data:', { user_id: data.user_id, username: data.username });
-
-            userId.value = data.user_id;
-            userName.value = data.username || data.display_name || 'Player';
-            localStorage.setItem('userId', data.user_id);
-            document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1');
-            userAvatar.value = data.avatar_url;
-
-            // Démarrer le heartbeat uniquement si l'auth a réussi
-            if (typeof window.startAuthHeartbeat === 'function') {
-              window.startAuthHeartbeat();
-            }
-
-            await loadGames();
-
-            // Si authentifié avec succès, afficher la page principale
-            view.value = 'home';
-            return true;
-          } catch (err) {
-            console.error('Authentication check error:', err);
-
-            // Si erreur 401 (pas de token ou token invalide), afficher la page de login
-            if (err.status === 401) {
-              console.log('User not authenticated, showing login page');
-              userId.value = null;
-              localStorage.removeItem('userId');
-
-              // Arrêter le heartbeat si il était démarré
-              if (typeof window.stopAuthHeartbeat === 'function') {
-                window.stopAuthHeartbeat();
+        try {
+          const results = await Promise.all(
+            words.map(async w => {
+              try {
+                const data = await apiGet(`/validate?word=${encodeURIComponent(w)}`);
+                return data.valid;
+              } catch (error) {
+                console.error(`Failed to validate word ${w}:`, error);
+                return false;
               }
+            })
+          )
+          wordValid.value = results.every(Boolean)
+        } catch {
+          wordValid.value = false
+        }
+      }
 
-              // Afficher la page de login
-              view.value = 'login';
-              authError.value = null; // Pas d'erreur à afficher, c'est normal
-              isLoading.value = false;
-              return false;
-            }
+      Vue.watch(placements, validateWord, { deep: true })
 
-            // Pour les autres erreurs (réseau, serveur, etc.)
-            authError.value = 'Erreur de connexion au serveur';
+      async function loadGames() {
+        if (!userId.value) return
+
+        try {
+          const data = await apiGet(`/games?user_id=${userId.value}`)
+          ongoingGames.value = data.ongoing || []
+          finishedGames.value = data.finished || []
+        } catch (error) {
+          console.error('Failed to load games:', error)
+          ongoingGames.value = []
+          finishedGames.value = []
+          // Ne pas afficher d'erreur à l'utilisateur pour le chargement des parties
+        }
+      }
+
+      async function checkAuth() {
+        authError.value = null;
+        isLoading.value = true;
+
+        try {
+          const data = await apiGet('/auth/me');
+          console.log('Auth successful, user data:', { user_id: data.user_id, username: data.username });
+
+          userId.value = data.user_id;
+          userName.value = data.username || data.display_name || 'Player';
+          localStorage.setItem('userId', data.user_id);
+          document.documentElement.setAttribute('data-theme', data.color_palette || 'palette1');
+          userAvatar.value = data.avatar_url;
+
+          // Démarrer le heartbeat uniquement si l'auth a réussi
+          if (typeof window.startAuthHeartbeat === 'function') {
+            window.startAuthHeartbeat();
+          }
+
+          await loadGames();
+
+          // Si authentifié avec succès, afficher la page principale
+          view.value = 'home';
+          return true;
+        } catch (err) {
+          console.error('Authentication check error:', err);
+
+          // Si erreur 401 (pas de token ou token invalide), afficher la page de login
+          if (err.status === 401) {
+            console.log('User not authenticated, showing login page');
             userId.value = null;
             localStorage.removeItem('userId');
+
+            // Arrêter le heartbeat si il était démarré
+            if (typeof window.stopAuthHeartbeat === 'function') {
+              window.stopAuthHeartbeat();
+            }
+
+            // Afficher la page de login
             view.value = 'login';
+            authError.value = null; // Pas d'erreur à afficher, c'est normal
             isLoading.value = false;
             return false;
           }
-        }
 
-        async function onAuth(id) {
-          userId.value = id
-          localStorage.setItem('userId', id)
-          view.value = 'home'
-          await checkAuth()
-        }
-
-        async function logout() {
-          try {
-            await apiPost('/auth/logout')
-          } catch (err) {
-            console.warn('Logout request failed:', err)
-            // On continue même si la requête de logout échoue
-          }
-
-          if (typeof window.stopAuthHeartbeat === 'function') {
-            window.stopAuthHeartbeat();
-          }
-
-          localStorage.removeItem('userId')
-          userId.value = null
-          ongoingGames.value = []
-          finishedGames.value = []
-          authError.value = null
-          view.value = 'home'
-        }
-
-        async function retryAuth() {
-          isLoading.value = true;
-          await checkAuth();
+          // Pour les autres erreurs (réseau, serveur, etc.)
+          authError.value = 'Erreur de connexion au serveur';
+          userId.value = null;
+          localStorage.removeItem('userId');
+          view.value = 'login';
           isLoading.value = false;
+          return false;
+        }
+      }
+
+      async function onAuth(id) {
+        userId.value = id
+        localStorage.setItem('userId', id)
+        view.value = 'home'
+        await checkAuth()
+      }
+
+      async function logout() {
+        try {
+          await apiPost('/auth/logout')
+        } catch (err) {
+          console.warn('Logout request failed:', err)
+          // On continue même si la requête de logout échoue
         }
 
-        async function newGameBot() {
-          try {
-            const { game_id } = await apiPost('/games', { vs_computer: true })
+        if (typeof window.stopAuthHeartbeat === 'function') {
+          window.stopAuthHeartbeat();
+        }
 
-            const { player_id } = await apiPost(`/games/${game_id}/join`, { user_id: Number(userId.value) })
+        localStorage.removeItem('userId')
+        userId.value = null
+        ongoingGames.value = []
+        finishedGames.value = []
+        authError.value = null
+        view.value = 'home'
+      }
 
-            await apiPost(`/games/${game_id}/join`, { is_computer: true })
+      async function retryAuth() {
+        isLoading.value = true;
+        await checkAuth();
+        isLoading.value = false;
+      }
 
-            const startData = await apiPost(`/games/${game_id}/start`)
+      async function newGameBot() {
+        try {
+          const { game_id } = await apiPost('/games', { vs_computer: true })
 
-            const info = startData.players.find(p => p.player_id === player_id)
-            rack.value = info.rack
-            placements.value = []
-            result.value = ''
-            score.value = 0
-            score_adversaire.value = 0
-            opponentAvatar.value = '/img/icone/avatars/robot.svg'
-            opponentName.value = 'Bot'
-            const game = { id: game_id, player_id, vsBot: true }
-            ongoingGames.value.push(game)
-            currentGame.value = game
-            view.value = 'game'
-          } catch (error) {
-            console.error('Failed to create bot game:', error);
-            await alertApp(`Erreur lors de la création de la partie: ${error.message}`);
+          const { player_id } = await apiPost(`/games/${game_id}/join`, { user_id: Number(userId.value) })
+
+          await apiPost(`/games/${game_id}/join`, { is_computer: true })
+
+          const startData = await apiPost(`/games/${game_id}/start`)
+
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
+          placements.value = []
+          result.value = ''
+          score.value = 0
+          score_adversaire.value = 0
+          opponentAvatar.value = '/img/icone/avatars/robot.svg'
+          opponentName.value = 'Bot'
+          const game = { id: game_id, player_id, vsBot: true }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
+        } catch (error) {
+          console.error('Failed to create bot game:', error);
+          await alertApp(`Erreur lors de la création de la partie: ${error.message}`);
+        }
+      }
+
+      async function newGameFriend(pseudo) {
+        try {
+          const resUser = await apiGet(`/users/by-username?username=${encodeURIComponent(pseudo)}`)
+          const friendId = resUser.user_id
+          const friendData = await apiGet(`/users/${friendId}`)
+          opponentAvatar.value = friendData.avatar_url
+          const { game_id } = await apiPost('/games', {})
+          const { player_id } = await apiPost(`/games/${game_id}/join`, { user_id: Number(userId.value) })
+          await apiPost(`/games/${game_id}/join`, { user_id: friendId })
+          const startData = await apiPost(`/games/${game_id}/start`)
+          const info = startData.players.find(p => p.player_id === player_id)
+          rack.value = info.rack
+          placements.value = []
+          result.value = ''
+          score.value = 0
+          score_adversaire.value = 0
+          const game = { id: game_id, player_id, vsBot: false }
+          ongoingGames.value.push(game)
+          currentGame.value = game
+          view.value = 'game'
+        } catch (error) {
+          if (error.status === 404) {
+            await alertApp('Utilisateur introuvable')
+          } else {
+            console.error('Failed to create friend game:', error)
+            await alertApp(`Erreur lors de la création de la partie: ${error.message}`)
           }
         }
+      }
 
-        async function newGameFriend(pseudo) {
+      async function resumeGame(game) {
+        try {
+          currentGame.value = game
+          view.value = 'game'
+          await Vue.nextTick()
+          const data = await apiGet(`/games/${game.id}?player_id=${game.player_id}`)
+
+          rack.value = data.rack
+          placements.value = []
+          result.value = ''
+          score.value = data.scores[game.player_id] || 0
+          const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
+          score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
+          userName.value = data.players.find(p => p.player_id === game.player_id)?.display_name || 'Player'
+          opponentName.value = data.players.find(p => p.player_id !== game.player_id)?.display_name || 'Opponent'
+          const opp = data.players?.find(p => p.player_id !== game.player_id)
+          if (opp) {
+            opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+          }
+
+          view.value = 'game'
+          await Vue.nextTick() // assure que <Game> et <Grid> sont montés
+
+          // API propre exposée par Game.vue
+          if (data.tiles && gameRef.value) {
+            data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
+          }
+        } catch (error) {
+          console.error('Failed to resume game:', error);
+          await alertApp(`Erreur lors de la reprise de la partie: ${error.message}`);
+          view.value = 'home';
+        }
+      }
+
+      async function finishGame() {
+        if (currentGame.value) {
           try {
-            const resUser = await apiGet(`/users/by-username?username=${encodeURIComponent(pseudo)}`)
-            const friendId = resUser.user_id
-            const friendData = await apiGet(`/users/${friendId}`)
-            opponentAvatar.value = friendData.avatar_url
-            const { game_id } = await apiPost('/games', {})
-            const { player_id } = await apiPost(`/games/${game_id}/join`, { user_id: Number(userId.value) })
-            await apiPost(`/games/${game_id}/join`, { user_id: friendId })
-            const startData = await apiPost(`/games/${game_id}/start`)
-            const info = startData.players.find(p => p.player_id === player_id)
-            rack.value = info.rack
-            placements.value = []
-            result.value = ''
-            score.value = 0
-            score_adversaire.value = 0
-            const game = { id: game_id, player_id, vsBot: false }
-            ongoingGames.value.push(game)
-            currentGame.value = game
-            view.value = 'game'
+            await apiPost('/finish', { game_id: currentGame.value.id })
+            const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
+            if (idx !== -1) ongoingGames.value.splice(idx, 1)
+            finishedGames.value.push(currentGame.value)
+            currentGame.value = null
           } catch (error) {
-            if (error.status === 404) {
-              await alertApp('Utilisateur introuvable')
-            } else {
-              console.error('Failed to create friend game:', error)
-              await alertApp(`Erreur lors de la création de la partie: ${error.message}`)
+            console.error('Failed to finish game:', error)
+            // On continue même si la requête échoue
+            currentGame.value = null
+          }
+        }
+        view.value = 'home'
+      }
+
+      function goHome() {
+        view.value = 'home'
+      }
+
+      function onDragStart(e, idx) {
+        e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx, source: 'rack' }))
+      }
+
+      function onRackDrop(e, idx) {
+        const data = JSON.parse(e.dataTransfer.getData('text/plain'))
+        if (data.source === 'rack') {
+          const from = data.index
+          const tile = rack.value.splice(from, 1)[0]
+          const insert = from < idx ? idx - 1 : idx
+          rack.value.splice(insert, 0, tile)
+        }
+        else if (data.source === 'board') {
+          const letter = gameRef.value.gridRef.value.takeBack(data.row, data.col)
+          if (!letter)
+            return
+          const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
+          if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
+          rack.value.splice(idx, 0, letter === letter.toLowerCase() ? '?' : letter)
+        }
+      }
+
+      async function placed(payload) {
+        rack.value.splice(payload.index, 1)
+        if (payload.letter === '?') {
+          const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+          let choice = await promptApp(`Choisissez une lettre pour le joker:\n${letters}`)
+          if (!choice) {
+            rack.value.splice(payload.index, 0, '?')
+            gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+            return
+          }
+          choice = choice.toUpperCase()
+          if (!letters.includes(choice)) {
+            rack.value.splice(payload.index, 0, '?')
+            gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
+            return
+          }
+          gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase(), false)
+          placements.value.push({ row: payload.row, col: payload.col, letter: choice, blank: true })
+        } else {
+          placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter, blank: false })
+        }
+      }
+
+      function removed(payload) {
+        const { row, col, letter } = payload
+        const i = placements.value.findIndex(p => p.row === row && p.col === col)
+        if (i !== -1) placements.value.splice(i, 1)
+        rack.value.push(letter === letter.toLowerCase() ? '?' : letter)
+      }
+
+      function moved(payload) {
+        const { from, to } = payload
+        const i = placements.value.findIndex(p => p.row === from.row && p.col === from.col)
+        if (i !== -1) {
+          placements.value[i].row = to.row
+          placements.value[i].col = to.col
+        }
+      }
+
+      function clearMove() {
+        gameRef.value.clearAll(placements.value)
+        placements.value.forEach(p => rack.value.push(p.blank ? '?' : p.letter))
+        placements.value = []
+      }
+
+      function shuffleRack() {
+        for (let i = rack.value.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+            ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
+        }
+      }
+
+      async function play() {
+        if (placements.value.length === 0) return
+        const execute = async () => {
+          try {
+            const data = await apiPost(`/games/${currentGame.value.id}/play`, {
+              player_id: currentGame.value.player_id,
+              placements: placements.value
+            })
+            if (data.words && data.words.length) {
+              await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
             }
-          }
-        }
-
-        async function resumeGame(game) {
-          try {
-            currentGame.value = game
-            view.value = 'game'
-            await Vue.nextTick()
-            const data = await apiGet(`/games/${game.id}?player_id=${game.player_id}`)
-
-            rack.value = data.rack
+            result.value = `Score : ${data.score}`
+            gameRef.value.lockTiles(placements.value)
             placements.value = []
-            result.value = ''
-            score.value = data.scores[game.player_id] || 0
-            const adversaryId = Number(Object.keys(data.scores).find(id => Number(id) !== game.player_id))
-            score_adversaire.value = adversaryId ? data.scores[adversaryId] : 0
-            userName.value = data.players.find(p => p.player_id === game.player_id)?.display_name || 'Player'
-            opponentName.value = data.players.find(p => p.player_id !== game.player_id)?.display_name || 'Opponent'
-            const opp = data.players?.find(p => p.player_id !== game.player_id)
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+              })
+            }
+            const stateData = await apiGet(`/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`)
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
             if (opp) {
               opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
             }
-
-            view.value = 'game'
-            await Vue.nextTick() // assure que <Game> et <Grid> sont montés
-
-            // API propre exposée par Game.vue
-            if (data.tiles && gameRef.value) {
-              data.tiles.forEach(t => gameRef.value.setTile(t.row, t.col, t.letter))
-            }
-          } catch (error) {
-            console.error('Failed to resume game:', error);
-            await alertApp(`Erreur lors de la reprise de la partie: ${error.message}`);
-            view.value = 'home';
-          }
-        }
-
-        async function finishGame() {
-          if (currentGame.value) {
-            try {
-              await apiPost('/finish', { game_id: currentGame.value.id })
-              const idx = ongoingGames.value.findIndex(g => g.id === currentGame.value.id)
-              if (idx !== -1) ongoingGames.value.splice(idx, 1)
-              finishedGames.value.push(currentGame.value)
-              currentGame.value = null
-            } catch (error) {
-              console.error('Failed to finish game:', error)
-              // On continue même si la requête échoue
-              currentGame.value = null
-            }
-          }
-          view.value = 'home'
-        }
-
-        function goHome() {
-          view.value = 'home'
-        }
-
-        function onDragStart(e, idx) {
-          e.dataTransfer.setData('text/plain', JSON.stringify({ letter: rack.value[idx], index: idx, source: 'rack' }))
-        }
-
-        function onRackDrop(e, idx) {
-          const data = JSON.parse(e.dataTransfer.getData('text/plain'))
-          if (data.source === 'rack') {
-            const from = data.index
-            const tile = rack.value.splice(from, 1)[0]
-            const insert = from < idx ? idx - 1 : idx
-            rack.value.splice(insert, 0, tile)
-          }
-          else if (data.source === 'board') {
-            const letter = gameRef.value.gridRef.value.takeBack(data.row, data.col)
-            if (!letter)
-              return
-            const placementIdx = placements.value.findIndex(p => p.row === data.row && p.col === data.col)
-            if (placementIdx !== -1) placements.value.splice(placementIdx, 1)
-            rack.value.splice(idx, 0, letter === letter.toLowerCase() ? '?' : letter)
-          }
-        }
-
-        async function placed(payload) {
-          rack.value.splice(payload.index, 1)
-          if (payload.letter === '?') {
-            const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-            let choice = await promptApp(`Choisissez une lettre pour le joker:\n${letters}`)
-            if (!choice) {
-              rack.value.splice(payload.index, 0, '?')
-              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
-              return
-            }
-            choice = choice.toUpperCase()
-            if (!letters.includes(choice)) {
-              rack.value.splice(payload.index, 0, '?')
-              gameRef.value.gridRef.value.takeBack(payload.row, payload.col)
-              return
-            }
-            gameRef.value.setTile(payload.row, payload.col, choice.toLowerCase(), false)
-            placements.value.push({ row: payload.row, col: payload.col, letter: choice, blank: true })
-          } else {
-            placements.value.push({ row: payload.row, col: payload.col, letter: payload.letter, blank: false })
-          }
-        }
-
-        function removed(payload) {
-          const { row, col, letter } = payload
-          const i = placements.value.findIndex(p => p.row === row && p.col === col)
-          if (i !== -1) placements.value.splice(i, 1)
-          rack.value.push(letter === letter.toLowerCase() ? '?' : letter)
-        }
-
-        function moved(payload) {
-          const { from, to } = payload
-          const i = placements.value.findIndex(p => p.row === from.row && p.col === from.col)
-          if (i !== -1) {
-            placements.value[i].row = to.row
-            placements.value[i].col = to.col
-          }
-        }
-
-        function clearMove() {
-          gameRef.value.clearAll(placements.value)
-          placements.value.forEach(p => rack.value.push(p.blank ? '?' : p.letter))
-          placements.value = []
-        }
-
-        function shuffleRack() {
-          for (let i = rack.value.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1))
-              ;[rack.value[i], rack.value[j]] = [rack.value[j], rack.value[i]]
-          }
-        }
-
-        async function play() {
-          if (placements.value.length === 0) return
-          const execute = async () => {
-            try {
-              const data = await apiPost(`/games/${currentGame.value.id}/play`, {
-                player_id: currentGame.value.player_id,
-                placements: placements.value
-              })
-              if (data.words && data.words.length) {
-                await alertApp(data.words.map(w => `${w.word} : ${w.score} pts`).join('\n'))
-              }
-              result.value = `Score : ${data.score}`
-              gameRef.value.lockTiles(placements.value)
-              placements.value = []
-              if (data.bot_move) {
-                data.bot_move.forEach(([row, col, letter, blank]) => {
-                  gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-                })
-              }
-              const stateData = await apiGet(`/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`)
-              rack.value = stateData.rack
-              score.value = stateData.scores[currentGame.value.player_id] || 0
-              const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-              score_adversaire.value = advId ? stateData.scores[advId] : 0
-              const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
-              if (opp) {
-                opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
-              }
-            } catch (err) {
-              const errData = err.body || {}
-              if (window.showInvalidWords) {
-                const words = await window.showInvalidWords(alertApp, errData.detail, currentWord.value)
-                if (!words.length) {
-                  await alertApp(errData.detail || 'Coup invalide')
-                }
-              } else {
+          } catch (err) {
+            const errData = err.body || {}
+            if (window.showInvalidWords) {
+              const words = await window.showInvalidWords(alertApp, errData.detail, currentWord.value)
+              if (!words.length) {
                 await alertApp(errData.detail || 'Coup invalide')
               }
-              result.value = errData.detail || 'Coup invalide'
+            } else {
+              await alertApp(errData.detail || 'Coup invalide')
             }
-          }
-          if (currentGame.value?.vsBot && window.runBotThinking) {
-            await window.runBotThinking(popup, execute)
-          } else {
-            await execute()
+            result.value = errData.detail || 'Coup invalide'
           }
         }
+        if (currentGame.value?.vsBot && window.runBotThinking) {
+          await window.runBotThinking(popup, execute)
+        } else {
+          await execute()
+        }
+      }
 
-        async function passTurn() {
-          clearMove()
-          const execute = async () => {
-            try {
-              const data = await apiPost(`/games/${currentGame.value.id}/pass`, { player_id: currentGame.value.player_id })
-              result.value = 'Tour passé'
-              if (data.bot_move) {
-                data.bot_move.forEach(([row, col, letter, blank]) => {
-                  gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
-                })
-              }
-              const stateData = await apiGet(`/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`)
-              rack.value = stateData.rack
-              score.value = stateData.scores[currentGame.value.player_id] || 0
-              const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
-              score_adversaire.value = advId ? stateData.scores[advId] : 0
-              const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
-              if (opp) {
-                opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
-              }
-            } catch (error) {
-              console.error('Failed to pass turn:', error)
-              await alertApp(`Erreur lors du passage de tour: ${error.message}`)
+      async function passTurn() {
+        clearMove()
+        const execute = async () => {
+          try {
+            const data = await apiPost(`/games/${currentGame.value.id}/pass`, { player_id: currentGame.value.player_id })
+            result.value = 'Tour passé'
+            if (data.bot_move) {
+              data.bot_move.forEach(([row, col, letter, blank]) => {
+                gameRef.value.setTile(row, col, blank ? letter.toLowerCase() : letter)
+              })
             }
-          }
-          if (currentGame.value?.vsBot && window.runBotThinking) {
-            await window.runBotThinking(popup, execute)
-          } else {
-            await execute()
+            const stateData = await apiGet(`/games/${currentGame.value.id}?player_id=${currentGame.value.player_id}`)
+            rack.value = stateData.rack
+            score.value = stateData.scores[currentGame.value.player_id] || 0
+            const advId = Number(Object.keys(stateData.scores).find(id => Number(id) !== currentGame.value.player_id))
+            score_adversaire.value = advId ? stateData.scores[advId] : 0
+            const opp = stateData.players?.find(p => p.player_id !== currentGame.value.player_id)
+            if (opp) {
+              opponentAvatar.value = opp.is_computer ? '/img/icone/avatars/robot.svg' : opp.avatar_url
+            }
+          } catch (error) {
+            console.error('Failed to pass turn:', error)
+            await alertApp(`Erreur lors du passage de tour: ${error.message}`)
           }
         }
-
-        return {
-          view,
-          userId,
-          ongoingGames,
-          finishedGames,
-          newGameFriend,
-          newGameBot,
-          resumeGame,
-          finishGame,
-          goHome,
-          rack,
-          onDragStart,
-          placed,
-          play,
-          result,
-          LETTER_POINTS,
-          onRackDrop,
-          gameRef,
-          removed,
-          clearMove,
-          shuffleRack,
-          passTurn,
-          moved,
-          onAuth,
-          logout,
-          score,
-          score_adversaire,
-          userAvatar,
-          opponentAvatar,
-          wordValid,
-          popup,
-          onPopupConfirm,
-          onPopupCancel,
-          authError,
-          isLoading,
-          retryAuth
+        if (currentGame.value?.vsBot && window.runBotThinking) {
+          await window.runBotThinking(popup, execute)
+        } else {
+          await execute()
         }
-      },
+      }
 
-      // Template de l'App dans index.html
-      // Template de l'App dans index.html - section à remplacer
-      template: `
+      return {
+        view,
+        userId,
+        ongoingGames,
+        finishedGames,
+        newGameFriend,
+        newGameBot,
+        resumeGame,
+        finishGame,
+        goHome,
+        rack,
+        onDragStart,
+        placed,
+        play,
+        result,
+        LETTER_POINTS,
+        onRackDrop,
+        gameRef,
+        removed,
+        clearMove,
+        shuffleRack,
+        passTurn,
+        moved,
+        onAuth,
+        logout,
+        score,
+        score_adversaire,
+        userAvatar,
+        opponentAvatar,
+        wordValid,
+        popup,
+        onPopupConfirm,
+        onPopupCancel,
+        authError,
+        isLoading,
+        retryAuth
+      }
+    },
+
+    // Template de l'App dans index.html
+    // Template de l'App dans index.html - section à remplacer
+    template: `
   <div class="app">
     <!-- Écran de chargement initial -->
     <div v-if="isLoading" class="loading-screen">
@@ -644,22 +636,22 @@
   </div>
 `,
 
-      // Fonction onAuth à ajouter/corriger
-      function onAuth(newUserId) {
-        userId.value = newUserId;
-    localStorage.setItem('userId', newUserId);
+    // Fonction onAuth à ajouter/corriger
+    function onAuth(newUserId) {
+      userId.value = newUserId;
+  localStorage.setItem('userId', newUserId);
 
-    // Démarrer le heartbeat
-    if (typeof window.startAuthHeartbeat === 'function') {
-      window.startAuthHeartbeat();
-    }
+  // Démarrer le heartbeat
+  if (typeof window.startAuthHeartbeat === 'function') {
+    window.startAuthHeartbeat();
+  }
 
-    // Recharger les données utilisateur et les parties
-    checkAuth();
+  // Recharger les données utilisateur et les parties
+  checkAuth();
 }
 
-    // CSS à ajouter pour l'écran de chargement
-    const loadingCSS = `
+  // CSS à ajouter pour l'écran de chargement
+  const loadingCSS = `
 <style>
 .loading-screen {
   min-height: 100vh;
@@ -721,87 +713,87 @@
 }
 </style>
 `;
+    }
+  Vue.createApp(App).mount('#app')
+</script>
 
-    Vue.createApp(App).mount('#app')
-  </script>
+<style>
+  .loading-screen,
+  .error-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem;
+    text-align: center;
+  }
 
-  <style>
-    .loading-screen,
-    .error-screen {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      padding: 2rem;
-      text-align: center;
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
     }
 
-    .loading-spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid #f3f3f3;
-      border-top: 4px solid #3498db;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 1rem;
+    100% {
+      transform: rotate(360deg);
     }
+  }
 
-    @keyframes spin {
-      0% {
-        transform: rotate(0deg);
-      }
+  .error-message {
+    background: #fff;
+    border-radius: 8px;
+    padding: 2rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    max-width: 400px;
+    width: 100%;
+  }
 
-      100% {
-        transform: rotate(360deg);
-      }
-    }
+  .error-message h3 {
+    color: #e74c3c;
+    margin-bottom: 1rem;
+  }
 
-    .error-message {
-      background: #fff;
-      border-radius: 8px;
-      padding: 2rem;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-      max-width: 400px;
-      width: 100%;
-    }
+  .error-message p {
+    color: #666;
+    margin-bottom: 1.5rem;
+    line-height: 1.5;
+  }
 
-    .error-message h3 {
-      color: #e74c3c;
-      margin-bottom: 1rem;
-    }
+  .retry-btn,
+  .offline-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin: 0 0.5rem;
+    font-size: 14px;
+    transition: background-color 0.2s;
+  }
 
-    .error-message p {
-      color: #666;
-      margin-bottom: 1.5rem;
-      line-height: 1.5;
-    }
+  .retry-btn:hover {
+    background: #2980b9;
+  }
 
-    .retry-btn,
-    .offline-btn {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin: 0 0.5rem;
-      font-size: 14px;
-      transition: background-color 0.2s;
-    }
+  .offline-btn {
+    background: #95a5a6;
+  }
 
-    .retry-btn:hover {
-      background: #2980b9;
-    }
-
-    .offline-btn {
-      background: #95a5a6;
-    }
-
-    .offline-btn:hover {
-      background: #7f8c8d;
-    }
-  </style>
+  .offline-btn:hover {
+    background: #7f8c8d;
+  }
+</style>
 </body>
 
 </html>
