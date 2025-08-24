@@ -44,7 +44,7 @@ ENV = os.getenv("ENV", "dev")  # 'dev' | 'prod'
 COOKIE_DOMAIN_ENV = os.getenv("COOKIE_DOMAIN", "").strip()
 PROD_DOMAIN = os.getenv("PROD_DOMAIN", "").strip()
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:5173")
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 # Default avatar assigned when a user account is created
 DEFAULT_AVATAR_URL = "/img/icone/avatars/default1.svg"
