@@ -52,13 +52,18 @@
       globals: {}
     }
 
-    const Grid = await loadModule('./components/Grid.vue', options)
-    const Home = await loadModule('./components/Home.vue', options)
-    const Game = await loadModule('./components/Game.vue', options)
-    const Settings = await loadModule('./components/Settings.vue', options)
-    const Profile = await loadModule('./components/Profile.vue', options)
-    const Login = await loadModule('./components/Login.vue', options)
-    const Popup = await loadModule('./components/Popup.vue', options)
+    async function loadComponent(path) {
+      const mod = await loadModule(path, options)
+      return mod.default || mod
+    }
+
+    const Grid = await loadComponent('./components/Grid.vue')
+    const Home = await loadComponent('./components/Home.vue')
+    const Game = await loadComponent('./components/Game.vue')
+    const Settings = await loadComponent('./components/Settings.vue')
+    const Profile = await loadComponent('./components/Profile.vue')
+    const Login = await loadComponent('./components/Login.vue')
+    const Popup = await loadComponent('./components/Popup.vue')
 
     const App = {
       components: { Grid, Home, Game, Settings, Profile, Login, Popup },
@@ -207,7 +212,8 @@
             return true;
           } catch (err) {
             console.error('Authentication check error:', err);
-            authError.value = err.status === 401 ? null : `Erreur de connexion: ${err.message}`;
+            const missingToken = err.status === 401 && err.body?.detail === 'Missing token';
+            authError.value = missingToken ? null : `Erreur de connexion: ${err.message}`;
             userId.value = null;
             localStorage.removeItem('userId');
             return false;
